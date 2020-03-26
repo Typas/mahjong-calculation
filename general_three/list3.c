@@ -2,58 +2,40 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define HAINUM 14
-#define ALLCASES       \
-    case B1...B7:      \
-    case C1...C7:      \
-    case D1...D7
-/* #define HAINUM 11 */
-/* #define ALLCASES                                \ */
-/*     case B1...B4:                               \ */
-/*     case C1...C4:                               \ */
-/*     case D1...D4 */
+#define HAINUM 11
+#define ALLCASES                                \
+    case B1...B4:                               \
+    case C1...C4:                               \
+    case D1...D4
 
-static long long unsigned combination_count = 0;
-static long long unsigned agari_count = 0;
-static long long unsigned pattern_count = 0;
-static long long unsigned agari_pattern_count = 0;
+static unsigned long long combination_count = 0;
+static unsigned long long agari_count = 0;
+static unsigned long long pattern_count = 0;
+static unsigned long long agari_pattern_count = 0;
 FILE* output_file = NULL;
 
 typedef enum Tile{
     Red,
     Green,
     White,
-    East,
-    South,
-    West,
-    North,
     B1,
     B2,
     B3,
     B4,
     B5,
     B6,
-    B7,
-    B8,
-    B9,
     C1,
     C2,
     C3,
     C4,
     C5,
     C6,
-    C7,
-    C8,
-    C9,
     D1,
     D2,
     D3,
     D4,
     D5,
     D6,
-    D7,
-    D8,
-    D9,
     _tile_end
 } Tile;
 
@@ -61,14 +43,19 @@ void hailoop(Tile [], int, int);
 int is_agari(Tile []);
 int check_hai(Tile [], int);
 
-int main(void)
+int main(int argc, char *argv[])
 {
     Tile hai[HAINUM];
-    output_file = fopen("agari_pattern_general_four_debug_O2.txt", "wb");
+    char* fname = "patterns_general_three.dat";
 
     // initialization
     for(int i = 0; i < HAINUM; ++i)
         hai[i] = Red;
+    if(argc > 1)
+        fname = argv[1];
+    output_file = fopen(fname, "wb");
+    if(output_file == NULL)
+        exit(1);
 
     // loop to end
     hailoop(hai, Red, 0);
@@ -135,9 +122,6 @@ void hailoop(Tile hai[], int n, int layer)
 
 int is_agari(Tile hai[])
 {
-#if HAINUM % 3 == 0
-    return check_hai(hai, HAINUM);
-#elif HAINUM % 3 == 2
     // copy for use
     int sum = 0;
     for(int i = 0 ; i < HAINUM ; ++i) {
@@ -191,9 +175,6 @@ int is_agari(Tile hai[])
     }
     
     return (tot_flag != 0);
-#else
-    return 0;
-#endif
 }
 
 int check_hai(Tile hai[], int n)

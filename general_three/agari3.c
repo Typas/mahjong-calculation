@@ -93,13 +93,16 @@ int _is_simple(Tile);
 int _is_terminal(Tile);
 int _is_honour(Tile);
 
-int main(void)
+int main(int argc, char *argv[])
 {
     Tile hai[HAINUM];
     char tmp[HAINUM];
     int counter = 0;
-    FILE *fp = fopen("general_three.txt", "rb");
-    /* FILE *fp = fopen("pattern_self.txt", "rb"); */
+    char *fname = "patterns_general_three.dat";
+    FILE *fp = NULL;
+    if(argc > 1)
+        fname = argv[1];
+    fp = fopen(fname, "rb");
     if(fp == NULL)
         exit(1);
 

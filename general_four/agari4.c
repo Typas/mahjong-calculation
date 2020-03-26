@@ -138,13 +138,16 @@ int _is_terminal(Tile);
 int _is_honour(Tile);
 int _all_same(int (*fn)(Tile*), Tile*);
 
-int main(void)
+int main(int argc, char *argv[])
 {
     Tile hai[HAINUM];
     char tmp[HAINUM];
     int counter = 0;
-    FILE *fp = fopen("agari_pattern_general_four.txt", "rb");
-    /* FILE *fp = fopen("pattern_self.txt", "rb"); */
+    char *fname = "patterns_general_four.dat";
+    FILE *fp = NULL;
+    if(argc > 1)
+        fname = argv[1];
+    fp = fopen(fname, "rb");
     if(fp == NULL)
         exit(1);
 
@@ -622,7 +625,7 @@ Hands _pin_hu(Tile *hai)
     return (_all_same(_is_chow, hai) ? PinHu : Not);
 }
 
-/* TODO: 番牌 */
+/* DONE: 番牌 */
 Hands _dragon(Tile *hai, int* n)
 {
     int _is_dragon(Tile);

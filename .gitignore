@@ -34,3 +34,10 @@
 *.idb
 *.pdb
 
+# Caches
+.ccls-cache/
+*~
+\#*\#
+
+# Data
+*.dat
