@@ -82,10 +82,10 @@ typedef enum Hands {
     HalfFlush,          // 混一色
     FullFlush,          // 清一色
     ThreeStepPung,      // 三連刻
-    FourStepPung,       // 四連刻
     LittleThreeDragons, // 小三元
     BigThreeDragons,    // 大三元
     LittleFourWinds,    // 小四喜
+    FourStepPung,       // 四連刻
     BigFourWinds,       // 大四喜
     AllHonours,         // 字一色
     PureTerminal,       // 清老頭
@@ -278,47 +278,40 @@ void _hai_copy(Tile* t, const Tile* c, int n)
         t[i] = c[i];
 }
 
+#define SCORE_CHECK(var, arr, func, arg) \
+    var = func(arg);                     \
+    arr[var] = 1
+
 // DONE: 計算分數組合
 unsigned score(Tile *hai, int *old_check, unsigned current_score)
 {
     int hand_check[_hands_end] = {0};
     int n_dragon = 0;
     Hands i = Not;
-    i = _pin_hu(hai);
-    hand_check[i] = 1;
+    SCORE_CHECK(i, hand_check, _pin_hu, hai);
+    SCORE_CHECK(i, hand_check, _simple, hai);
+    SCORE_CHECK(i, hand_check, _straight, hai);
+    SCORE_CHECK(i, hand_check, _terminal, hai);
+    SCORE_CHECK(i, hand_check, _same_chow, hai);
+    SCORE_CHECK(i, hand_check, _mix_triple, hai);
+    SCORE_CHECK(i, hand_check, _all_pungs, hai);
+    SCORE_CHECK(i, hand_check, _flush, hai);
+    SCORE_CHECK(i, hand_check, _words, hai);
+    SCORE_CHECK(i, hand_check, _all_honours, hai);
+    SCORE_CHECK(i, hand_check, _step_pungs, hai);
     i = _dragon(hai, &n_dragon);
-    hand_check[i] = 1;
-    i = _simple(hai);
-    hand_check[i] = 1;
-    i = _straight(hai);
-    hand_check[i] = 1;
-    i = _terminal(hai);
-    hand_check[i] = 1;
-    i = _same_chow(hai);
-    hand_check[i] = 1;
-    i = _mix_triple(hai);
-    hand_check[i] = 1;
-    i = _all_pungs(hai);
-    hand_check[i] = 1;
-    i = _flush(hai);
-    hand_check[i] = 1;
-    i = _words(hai);
-    hand_check[i] = 1;
-    i = _all_honours(hai);
-    hand_check[i] = 1;
-    i = _step_pungs(hai);
     hand_check[i] = 1;
 
     unsigned long long comb = _calc_combination(hai);
     // 役滿
-    if(hand_check[LittleFourWinds] | hand_check[PureTerminal] | hand_check[BigFourWinds] || hand_check[SameQuadroChow] | hand_check[AllHonours]) {
+    if(hand_check[PureTerminal] | hand_check[BigFourWinds] || hand_check[SameQuadroChow] | hand_check[AllHonours]) {
         // 只計役滿
-        for(Hands i = LittleFourWinds; i < _hands_end; ++i) {
+        for(Hands i = BigFourWinds; i < _hands_end; ++i) {
             patterns[i] += hand_check[i];
             combinations[i] += hand_check[i]*comb;
-            scores[i] += ((i==LittleFourWinds||i==AllHonours)?320:(i==BigFourWinds||i==PureTerminal)?400:480)*comb*hand_check[i] - current_score*comb*old_check[i];
+            scores[i] += ((i==AllHonours)?320:(i==BigFourWinds||i==PureTerminal)?400:480)*comb*hand_check[i] - current_score*comb*old_check[i];
         }
-        for(Hands i = PinHu; i < LittleFourWinds; ++i) {
+        for(Hands i = PinHu; i < BigFourWinds; ++i) {
             patterns[i] -= old_check[i];
             combinations[i] -= old_check[i];
             scores[i] -= current_score*comb*old_check[i];
@@ -349,18 +342,18 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     else if(hand_check[PureWithTerminal])
         result += 40;
     else if(hand_check[MixTerminal])
-        result += 100;
+        result += 120;
 
     if(hand_check[Straight])
-        result += 30;
+        result += 20;
 
     if(hand_check[SameChow])
         result += 10;
     else if(hand_check[DoubleSameChow])
-        result += 55;
+        result += 60;
 
     if(hand_check[MixTripleChow])
-        result += 20;
+        result += 15;
     else if(hand_check[TriplePung])
         result += 120;
 
@@ -368,19 +361,21 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 40;
 
     if(hand_check[HalfFlush])
-        result += 40;
+        result += 60;
     else if(hand_check[FullFlush])
         result += 80;
 
     if(hand_check[ThreeStepPung])
         result += 100;
     else if(hand_check[FourStepPung])
-        result += 210;
+        result += 200;
 
     if(hand_check[LittleThreeDragons])
-        result += 40;
+        result += 80;
     else if(hand_check[BigThreeDragons])
-        result += 130;
+        result += 120;
+    else if(hand_check[LittleFourWinds])
+        result += 200;
 
     if(result > 320) // hard cap
         result = 320;
