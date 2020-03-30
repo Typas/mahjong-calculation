@@ -349,7 +349,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     else if(hand_check[PureWithTerminal])
         result += 40;
     else if(hand_check[MixTerminal])
-        result += 100;
+        result += 120;
 
     if(hand_check[Straight])
         result += 30;
@@ -357,7 +357,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[SameChow])
         result += 10;
     else if(hand_check[DoubleSameChow])
-        result += 55;
+        result += 60;
 
     if(hand_check[MixTripleChow])
         result += 20;
@@ -368,17 +368,17 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 40;
 
     if(hand_check[HalfFlush])
-        result += 40;
+        result += 60;
     else if(hand_check[FullFlush])
         result += 80;
 
     if(hand_check[ThreeStepPung])
         result += 100;
     else if(hand_check[FourStepPung])
-        result += 210;
+        result += 200;
 
     if(hand_check[LittleThreeDragons])
-        result += 40;
+        result += 60;
     else if(hand_check[BigThreeDragons])
         result += 130;
 
