@@ -371,7 +371,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 200;
 
     if(hand_check[LittleThreeDragons])
-        result += 80;
+        result += 60;
     else if(hand_check[BigThreeDragons])
         result += 120;
     else if(hand_check[LittleFourWinds])
