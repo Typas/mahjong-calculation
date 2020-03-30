@@ -82,10 +82,10 @@ typedef enum Hands {
     HalfFlush,          // 混一色
     FullFlush,          // 清一色
     ThreeStepPung,      // 三連刻
+    FourStepPung,       // 四連刻
     LittleThreeDragons, // 小三元
     BigThreeDragons,    // 大三元
     LittleFourWinds,    // 小四喜
-    FourStepPung,       // 四連刻
     BigFourWinds,       // 大四喜
     AllHonours,         // 字一色
     PureTerminal,       // 清老頭
@@ -345,7 +345,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 120;
 
     if(hand_check[Straight])
-        result += 20;
+        result += 30;
 
     if(hand_check[SameChow])
         result += 10;
@@ -353,7 +353,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 60;
 
     if(hand_check[MixTripleChow])
-        result += 15;
+        result += 20;
     else if(hand_check[TriplePung])
         result += 120;
 
