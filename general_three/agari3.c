@@ -278,7 +278,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         for(Hands i = PureTerminal; i < _hands_end; ++i) {
             patterns[i] += hand_check[i];
             combinations[i] += hand_check[i]*comb;
-            scores[i] += ((i==PureTerminal)?160:200)*comb*hand_check[i] - current_score*comb*old_check[i];
+            scores[i] += ((i==PureTerminal)?200:200)*comb*hand_check[i] - current_score*comb*old_check[i];
         }
         for(Hands i = PinHu; i < PureTerminal; ++i) {
             patterns[i] -= old_check[i];
@@ -287,7 +287,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
             old_check[i] = 0;
         }
         // 回傳最大值
-        if(hand_check[BigThreeDragons])
+        if(hand_check[BigThreeDragons] | hand_check[PureTerminal])
             return 200;
         else
             return 160;
@@ -300,44 +300,44 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 5;
     
     if(hand_check[Dragon])
-        result += 10;
+        result += 20;
     
     if(hand_check[Simple])
-        result += 5;
+        result += 15;
     else if(hand_check[MixWithTerminal])
-        result += 10;
+        result += 20;
     else if(hand_check[PureWithTerminal])
-        result += 10;
+        result += 20;
     else if(hand_check[MixTerminal])
-        result += 60;
+        result += 100;
 
     if(hand_check[Straight])
-        result += 5;
+        result += 10;
 
     if(hand_check[SameChow])
-        result += 5;
+        result += 20;
     // 一色三同順以三連刻計
     else if(hand_check[SameTripleChow]) {
         patterns[AllPungs] += 1;
         combinations[AllPungs] += comb;
-        result += 60+30-5;
+        result += 100+40-5;
     }
 
     if(hand_check[MixTripleChow])
-        result += 20;
+        result += 30;
     else if(hand_check[TriplePung])
-        result += 90;
+        result += 120;
 
     if(hand_check[AllPungs])
-        result += 30;
+        result += 40;
 
     if(hand_check[HalfFlush])
-        result += 30;
-    else if(hand_check[FullFlush])
         result += 60;
+    else if(hand_check[FullFlush])
+        result += 100;
 
     if(hand_check[LittleThreeDragons])
-        result += 60;
+        result += 100;
 
     if(result > 160) // hard cap
         result = 160;
