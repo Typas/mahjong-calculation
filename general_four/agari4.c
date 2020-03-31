@@ -9,7 +9,7 @@
 #define CHARACTER_LAST C9
 #define DOTS_LAST D9
 #define WORDNUM 7
-#define FLUSHMAGIC (WORDNUM-1)
+#define FLUSHMAGIC (TILE_PER_COLOR-WORDNUM)
 
 #define CHOWHEAD case B1...B7: case C1...C7: case D1...D7
 
@@ -121,9 +121,7 @@ Hands _all_pungs(Tile*);
 /* 一色類 */
 Hands _flush(Tile*);
 /* 字牌類 */
-Hands _words(Tile*);
-/* 字一色 */
-Hands _all_honours(Tile*);
+Hands _honours(Tile*);
 /* 連刻類 */
 Hands _step_pungs(Tile*);
 
@@ -296,8 +294,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     SCORE_CHECK(i, hand_check, _mix_triple, hai);
     SCORE_CHECK(i, hand_check, _all_pungs, hai);
     SCORE_CHECK(i, hand_check, _flush, hai);
-    SCORE_CHECK(i, hand_check, _words, hai);
-    SCORE_CHECK(i, hand_check, _all_honours, hai);
+    SCORE_CHECK(i, hand_check, _honours, hai);
     SCORE_CHECK(i, hand_check, _step_pungs, hai);
     i = _dragon(hai, &n_dragon);
     hand_check[i] = 1;
@@ -361,7 +358,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 40;
 
     if(hand_check[HalfFlush])
-        result += 60;
+        result += 40;
     else if(hand_check[FullFlush])
         result += 80;
 
@@ -373,7 +370,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[LittleThreeDragons])
         result += 60;
     else if(hand_check[BigThreeDragons])
-        result += 120;
+        result += 130;
     else if(hand_check[LittleFourWinds])
         result += 200;
 
@@ -815,24 +812,28 @@ Hands _flush(Tile *hai)
     int _is_color(Tile);
     // 0: 字, 1: 索, 2: 萬, 3: 筒
     int color = _is_color(hai[0]);
+    int i = 0;
+    for(i=0; i<HAINUM; ++i)
+        if((color=_is_color(hai[i])) != 0)
+            break;
+    // 字一色
+    if(i == HAINUM)
+        return AllHonours;
 
     // 清一色
-    if(color != 0){
-        int i = 0;
-        for(i=0; i<HAINUM; ++i) {
-            if(_is_color(hai[i]) != color) {
-                if(_is_color(hai[i]) != 0)
-                    return Not;
-                else
-                    break;
-            }
+    for(i=0; i<HAINUM; ++i) {
+        if(_is_color(hai[i]) != color) {
+            if(_is_color(hai[i]) != 0)
+                return Not;
+            else
+                break;
         }
-        if(i == HAINUM)
-            return FullFlush;
     }
+    if(i == HAINUM)
+        return FullFlush;
 
     // 混一色
-    for(int i=0; i<HAINUM; ++i)
+    for(i=0; i<HAINUM; ++i)
         if(_is_color(hai[i]) != color && _is_color(hai[i]) != 0)
             return Not;
 
@@ -845,7 +846,7 @@ inline int _is_color(Tile t)
 }
 
 /* DONE: 字牌類 */
-Hands _words(Tile *hai)
+Hands _honours(Tile *hai)
 {
     int _is_four_wind(Tile);
     int _is_three_dragon(Tile);
@@ -880,12 +881,6 @@ int _is_four_wind(Tile t)
 int _is_three_dragon(Tile t)
 {
     return (t == Red || t == Green || t == White);
-}
-
-/* 字一色 */
-Hands _all_honours(Tile* hai)
-{
-    return (_is_honour(hai[0]) && _is_honour(hai[2]) && _is_honour(hai[5]) && _is_honour(hai[8]) && _is_honour(hai[11])) ? AllHonours : Not;
 }
 
 /* DONE: 連刻類 */
