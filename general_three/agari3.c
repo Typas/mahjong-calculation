@@ -305,9 +305,9 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[Simple])
         result += 15;
     else if(hand_check[MixWithTerminal])
-        result += 20;
+        result += 15;
     else if(hand_check[PureWithTerminal])
-        result += 20;
+        result += 15;
     else if(hand_check[MixTerminal])
         result += 100;
 
@@ -332,12 +332,12 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 40;
 
     if(hand_check[HalfFlush])
-        result += 60;
+        result += 40;
     else if(hand_check[FullFlush])
-        result += 100;
+        result += 80;
 
     if(hand_check[LittleThreeDragons])
-        result += 100;
+        result += 80;
 
     if(result > 160) // hard cap
         result = 160;
@@ -446,7 +446,7 @@ int _is_valid_hai(Tile* hai, int n)
 {
     if (!n) return 1;
     if ((n % 3)) {
-        fprintf(stderr, "what the hell is %d?\n", n);
+        // not possible
         return 0;
     }
      int used_index[HAINUM] = {0};
@@ -734,14 +734,17 @@ Hands _all_pungs(Tile *hai)
 Hands _flush(Tile *hai)
 {
     // 0: 字, 1: 索, 2: 萬, 3: 筒
-    int color = (hai[0]+2)/6;
-    
+    int color = 0;
+    for(int i=0; i<HAINUM; ++i)
+        if((color = (hai[i]+3)/6) != 0)
+            break;
+
     // 清一色
     if(color != 0){
         int i = 0;
         for(i=0; i<HAINUM; ++i) {
-            if((hai[i]+2)/6 != color) {
-                if((hai[i]+2)/6 != 0)
+            if((hai[i]+3)/6 != color) {
+                if((hai[i]+3)/6 != 0)
                     return Not;
                 else
                     break;
@@ -753,7 +756,7 @@ Hands _flush(Tile *hai)
     
     // 混一色
     for(int i=0; i<HAINUM; ++i)
-        if((hai[i]+2)/6 != color && (hai[i]+2)/6 != 0)
+        if((hai[i]+3)/6 != color && (hai[i]+3)/6 != 0)
             return Not;
     
     return HalfFlush;
