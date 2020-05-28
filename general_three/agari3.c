@@ -35,10 +35,7 @@ typedef enum Hands {
     Not,   // 非此役
     PinHu, // 平和
     Dragon, // 番牌
-    Simple, // 斷么
     Straight, // 一氣通貫
-    MixWithTerminal, // 混全帶
-    PureWithTerminal, // 純全帶
     MixTerminal, // 混老頭
     SameChow, // 一般高
     SameTripleChow, // 一色三同順
@@ -46,6 +43,9 @@ typedef enum Hands {
     AllPungs, // 對對和
     HalfFlush, // 混一色
     FullFlush, // 清一色
+    SingleAnko, // 一暗刻
+    DoubleAnko, // 二暗刻
+    TripleAnko, // 三暗刻
     LittleThreeDragons, // 小三元
     TriplePung, // 三色同刻
     PureTerminal, // 清老頭
@@ -66,8 +66,6 @@ const char* type_name(Hands);
 Hands _pin_hu(Tile*);
 /* 番牌 */
 Hands _dragon(Tile*);
-/* 斷么 */
-Hands _simple(Tile*);
 /* 一氣通貫 */
 Hands _straight(Tile*);
 /* 么九類 */
@@ -82,6 +80,8 @@ Hands _all_pungs(Tile*);
 Hands _flush(Tile*);
 /* 三元類 */
 Hands _three_dragons(Tile*);
+/* 暗刻類 */
+Hands _anko(Tile*);
 
 // 輔助函式
 unsigned long long _calc_combination(const Tile*);
@@ -254,8 +254,6 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     hand_check[i] = 1;
     i = _dragon(hai);
     hand_check[i] = 1;
-    i = _simple(hai);
-    hand_check[i] = 1;
     i = _straight(hai);
     hand_check[i] = 1;
     i = _terminal(hai);
@@ -269,6 +267,8 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     i = _flush(hai);
     hand_check[i] = 1;
     i = _three_dragons(hai);
+    hand_check[i] = 1;
+    i = _anko(hai);
     hand_check[i] = 1;
 
     unsigned long long comb = _calc_combination(hai);
@@ -302,13 +302,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[Dragon])
         result += 20;
     
-    if(hand_check[Simple])
-        result += 0;
-    else if(hand_check[MixWithTerminal])
-        result += 0;
-    else if(hand_check[PureWithTerminal])
-        result += 0;
-    else if(hand_check[MixTerminal])
+    if(hand_check[MixTerminal])
         result += 100;
 
     if(hand_check[Straight])
@@ -320,6 +314,8 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     else if(hand_check[SameTripleChow]) {
         patterns[AllPungs] += 1;
         combinations[AllPungs] += comb;
+        patterns[TripleAnko] += 1;
+        combinations[TripleAnko] += comb;
         result += 100+40-5;
     }
 
@@ -405,14 +401,8 @@ const char* type_name(Hands h)
         return "平和";
     case Dragon:
         return "番牌";
-    case Simple:
-        return "斷么";
     case Straight:
         return "一氣通貫";
-    case MixWithTerminal:
-        return "混全帶么";
-    case PureWithTerminal:
-        return "純全帶么";
     case MixTerminal:
         return "混老頭";
     case SameChow:
@@ -427,6 +417,12 @@ const char* type_name(Hands h)
         return "混一色";
     case FullFlush:
         return "清一色";
+    case SingleAnko:
+        return "一暗刻";
+    case DoubleAnko:
+        return "二暗刻";
+    case TripleAnko:
+        return "三暗刻";
     case LittleThreeDragons:
         return "小三元";
     case TriplePung:
@@ -577,22 +573,6 @@ Hands _dragon(Tile *hai)
         return Not;
 }
 
-/* 斷么 */
-Hands _simple(Tile *hai)
-{
-    for(int i=0; i<HAINUM; ++i) {
-        switch(hai[i]) {
-        case Red...B1: case B6: case C1: case C6: case D1: case D6:
-            return Not;
-        case B2...B5: case C2...C5: case D2...D5:
-            break;
-        default:
-            return Not;
-        }
-    }
-    return Simple;
-}
-
 /* 一氣通貫 */
 Hands _straight(Tile *hai)
 {
@@ -650,17 +630,6 @@ Hands _terminal(Tile *hai)
            && (_is_terminal(hai[8]) || _is_honour(hai[8])))
             return MixTerminal;
     }
-    // 純全帶
-    if( _is_terminal(hai[0]) && _has_terminal(hai+2) && _has_terminal(hai+5) && _has_terminal(hai+8))
-        return PureWithTerminal;
-    
-    // 混全帶
-    if((_is_terminal(hai[0]) || _is_honour(hai[0]))
-       && (_has_terminal(hai+2) || _is_honour(hai[2]))
-       && (_has_terminal(hai+5) || _is_honour(hai[5]))
-       && (_has_terminal(hai+8) || _is_honour(hai[8])))
-        return MixWithTerminal;
-    
     return Not;
 }
 
@@ -781,4 +750,23 @@ Hands _three_dragons(Tile *hai)
     }
 
     return Not; // flycheck is idiot
+}
+
+/* 暗刻類 */
+Hands _anko(Tile *hai)
+{
+    int pungs = _is_pung(hai+2) + _is_pung(hai+5) + _is_pung(hai+8);
+
+    switch(pungs) {
+    case 1:
+        return SingleAnko;
+    case 2:
+        return DoubleAnko;
+    case 3:
+        return TripleAnko;
+    default:
+        break;
+    }
+    
+    return Not;
 }
