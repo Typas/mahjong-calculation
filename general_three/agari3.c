@@ -303,16 +303,16 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 20;
     
     if(hand_check[Simple])
-        result += 15;
+        result += 0;
     else if(hand_check[MixWithTerminal])
-        result += 15;
+        result += 0;
     else if(hand_check[PureWithTerminal])
-        result += 15;
+        result += 0;
     else if(hand_check[MixTerminal])
         result += 100;
 
     if(hand_check[Straight])
-        result += 10;
+        result += 15;
 
     if(hand_check[SameChow])
         result += 20;
