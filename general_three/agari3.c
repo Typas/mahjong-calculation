@@ -38,7 +38,7 @@ typedef enum Hands {
     Straight, // 一氣通貫
     MixTerminal, // 混老頭
     SameChow, // 一般高
-    SameTripleChow, // 一色三同順
+    /* SameTripleChow, // 一色三同順 */
     MixTripleChow, // 三色同順
     AllPungs, // 對對和
     HalfFlush, // 混一色
@@ -46,6 +46,8 @@ typedef enum Hands {
     SingleAnko, // 一暗刻
     DoubleAnko, // 二暗刻
     TripleAnko, // 三暗刻
+    DoubleShiftPung, // 二連刻
+    TripleShiftPung, // 三連刻
     LittleThreeDragons, // 小三元
     TriplePung, // 三色同刻
     PureTerminal, // 清老頭
@@ -82,6 +84,8 @@ Hands _flush(Tile*);
 Hands _three_dragons(Tile*);
 /* 暗刻類 */
 Hands _anko(Tile*);
+/* 連刻類 */
+Hands _shift_pungs(Tile*);
 
 // 輔助函式
 unsigned long long _calc_combination(const Tile*);
@@ -161,21 +165,21 @@ void type_check(Tile *hai)
         // check validity, then go score
         if(_is_valid_hai(varhai+2, HAINUM-2)) {
             // rearrange
-            if(_all_pungs(varhai) == AllPungs) {
-                // 三連刻
-                if(varhai[5] == varhai[2]+1 && varhai[8] == varhai[5]+1) {
-                    switch(varhai[2]) {
-                    case B1...B4: case C1...C4: case D1...D4:
-                        _tile_swap(varhai+3, varhai+5);
-                        _tile_swap(varhai+4, varhai+8);
-                        _tile_swap(varhai+7, varhai+9);
-                        break;
-                    default:
-                        break;
-                    }
-                }
-            }
-            else {
+            /* if(_all_pungs(varhai) == AllPungs) { */
+            /*     // 三連刻 */
+            /*     if(varhai[5] == varhai[2]+1 && varhai[8] == varhai[5]+1) { */
+            /*         switch(varhai[2]) { */
+            /*         case B1...B4: case C1...C4: case D1...D4: */
+            /*             _tile_swap(varhai+3, varhai+5); */
+            /*             _tile_swap(varhai+4, varhai+8); */
+            /*             _tile_swap(varhai+7, varhai+9); */
+            /*             break; */
+            /*         default: */
+            /*             break; */
+            /*         } */
+            /*     } */
+            /* } */
+            /* else { */
                 Tile subhai[HAINUM/3][3] = {{Red}};
                 int used_index[HAINUM] = {0};
                 used_index[0] = used_index[1] = 1;
@@ -209,7 +213,7 @@ void type_check(Tile *hai)
                 }
                 for(int j = 0; j < HAINUM/3; ++j)
                     _hai_copy(varhai+2+3*j, subhai[j], 3);
-            }
+            /* } */
 
             hai_score = score(varhai, hand_check, hai_score);
         }
@@ -270,6 +274,8 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     hand_check[i] = 1;
     i = _anko(hai);
     hand_check[i] = 1;
+    i = _shift_pungs(hai);
+    hand_check[i] = 1;
 
     unsigned long long comb = _calc_combination(hai);
     // 役滿
@@ -303,24 +309,24 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 20;
     
     if(hand_check[MixTerminal])
-        result += 100;
+        result += 80;
 
     if(hand_check[Straight])
         result += 15;
 
     if(hand_check[SameChow])
         result += 20;
-    // 一色三同順以三連刻計
-    else if(hand_check[SameTripleChow]) {
-        patterns[AllPungs] += 1;
-        combinations[AllPungs] += comb;
-        patterns[TripleAnko] += 1;
-        combinations[TripleAnko] += comb;
-        result += 100+40-5;
-    }
+    /* // 一色三同順以三連刻計 */
+    /* else if(hand_check[SameTripleChow]) { */
+    /*     patterns[AllPungs] += 1; */
+    /*     combinations[AllPungs] += comb; */
+    /*     patterns[TripleAnko] += 1; */
+    /*     combinations[TripleAnko] += comb; */
+    /*     result += 100+40-5; */
+    /* } */
 
     if(hand_check[MixTripleChow])
-        result += 30;
+        result += 35;
     else if(hand_check[TriplePung])
         result += 120;
 
@@ -333,6 +339,11 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 80;
 
     if(hand_check[LittleThreeDragons])
+        result += 80;
+
+    if(hand_check[DoubleShiftPung])
+        result += 20;
+    else if(hand_check[TripleShiftPung])
         result += 80;
 
     if(result > 160) // hard cap
@@ -407,8 +418,8 @@ const char* type_name(Hands h)
         return "混老頭";
     case SameChow:
         return "一般高";
-    case SameTripleChow:
-        return "三同順";
+    /* case SameTripleChow: */
+    /*     return "三同順"; */
     case MixTripleChow:
         return "三色同順";
     case AllPungs:
@@ -423,6 +434,10 @@ const char* type_name(Hands h)
         return "二暗刻";
     case TripleAnko:
         return "三暗刻";
+    case DoubleShiftPung:
+        return "二連刻";
+    case TripleShiftPung:
+        return "三連刻";
     case LittleThreeDragons:
         return "小三元";
     case TriplePung:
@@ -636,10 +651,10 @@ Hands _terminal(Tile *hai)
 /* 同順類 */
 Hands _same_chow(Tile *hai)
 {
-    // 一色三同順
-    if(_pin_hu(hai) == PinHu)
-        if(hai[2] == hai[5] && hai[8] == hai[5])
-            return SameTripleChow;
+    /* // 一色三同順 */
+    /* if(_pin_hu(hai) == PinHu) */
+    /*     if(hai[2] == hai[5] && hai[8] == hai[5]) */
+    /*         return SameTripleChow; */
     
     // 一般高
     // 12
@@ -768,5 +783,49 @@ Hands _anko(Tile *hai)
         break;
     }
     
+    return Not;
+}
+
+/* 連刻類 */
+Hands _shift_pungs(Tile *hai)
+{
+    // 三連刻
+    if(_all_pungs(hai) == AllPungs) {
+        if(hai[5] == hai[2] + 1 && hai[8] == hai[5] + 1) {
+            switch(hai[2]) {
+            case B1...B4: case C1...C4: case D1...D4:
+                return TripleShiftPung;
+            default:
+                break;
+            }
+        }
+    }
+
+    // 二連刻
+    if(hai[5] == hai[2] + 1 && _is_pung(hai+5) && _is_pung(hai+2)) {
+        switch(hai[2]) {
+        case B1...B5: case C1...C5: case D1...D5:
+            return DoubleShiftPung;
+        default:
+            break;
+        }
+    }
+    if(hai[8] == hai[5] + 1 && _is_pung(hai+8) && _is_pung(hai+5)) {
+        switch(hai[5]) {
+        case B1...B5: case C1...C5: case D1...D5:
+            return DoubleShiftPung;
+        default:
+            break;
+        }
+    }
+    if(hai[8] == hai[2] + 1 && _is_pung(hai+8) && _is_pung(hai+2)) {
+        switch(hai[2]) {
+        case B1...B5: case C1...C5: case D1...D5:
+            return DoubleShiftPung;
+        default:
+            break;
+        }
+    }
+
     return Not;
 }
