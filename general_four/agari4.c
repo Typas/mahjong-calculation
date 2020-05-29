@@ -347,7 +347,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[SameChow])
         result += 10;
     else if(hand_check[DoubleSameChow])
-        result += 60;
+        result += 55;
 
     if(hand_check[MixTripleChow])
         result += 20;
@@ -363,7 +363,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 80;
 
     if(hand_check[ThreeStepPung])
-        result += 100;
+        result += 80;
     else if(hand_check[FourStepPung])
         result += 200;
 
