@@ -38,7 +38,6 @@ typedef enum Hands {
     Straight, // 一氣通貫
     MixTerminal, // 混老頭
     SameChow, // 一般高
-    /* SameTripleChow, // 一色三同順 */
     MixTripleChow, // 三色同順
     AllPungs, // 對對和
     HalfFlush, // 混一色
@@ -46,8 +45,8 @@ typedef enum Hands {
     SingleAnko, // 一暗刻
     DoubleAnko, // 二暗刻
     TripleAnko, // 三暗刻
-    DoubleShiftPung, // 二連刻
-    TripleShiftPung, // 三連刻
+    DoubleStepPung, // 二連刻
+    TripleStepPung, // 三連刻
     LittleThreeDragons, // 小三元
     TriplePung, // 三色同刻
     PureTerminal, // 清老頭
@@ -85,7 +84,7 @@ Hands _three_dragons(Tile*);
 /* 暗刻類 */
 Hands _anko(Tile*);
 /* 連刻類 */
-Hands _shift_pungs(Tile*);
+Hands _step_pungs(Tile*);
 
 // 輔助函式
 unsigned long long _calc_combination(const Tile*);
@@ -164,56 +163,39 @@ void type_check(Tile *hai)
 
         // check validity, then go score
         if(_is_valid_hai(varhai+2, HAINUM-2)) {
-            // rearrange
-            /* if(_all_pungs(varhai) == AllPungs) { */
-            /*     // 三連刻 */
-            /*     if(varhai[5] == varhai[2]+1 && varhai[8] == varhai[5]+1) { */
-            /*         switch(varhai[2]) { */
-            /*         case B1...B4: case C1...C4: case D1...D4: */
-            /*             _tile_swap(varhai+3, varhai+5); */
-            /*             _tile_swap(varhai+4, varhai+8); */
-            /*             _tile_swap(varhai+7, varhai+9); */
-            /*             break; */
-            /*         default: */
-            /*             break; */
-            /*         } */
-            /*     } */
-            /* } */
-            /* else { */
-                Tile subhai[HAINUM/3][3] = {{Red}};
-                int used_index[HAINUM] = {0};
-                used_index[0] = used_index[1] = 1;
-                int k = 0;
-                for(int j = 2; j < HAINUM; ) {
-                    if(used_index[j]) {
-                        ++j;
-                        continue;
-                    }
-                    
-                    if((_is_chow(varhai+j) || _is_pung(varhai+j)) && !(used_index[j+1]) && !(used_index[j+2])){
-                        _hai_copy(subhai[k], varhai+j, 3);
-                        used_index[j] = used_index[j+1] = used_index[j+2] = 1;
-                        j+=3;
-                        ++k;
-                        continue;
-                    }
-                    
-                    int next_index = -1, last_index = -1;
-                    next_index = j+_find_next_tile_index(varhai+j, HAINUM-j);
-                    while(used_index[next_index])
-                        ++next_index;
-                    last_index = next_index+_find_next_tile_index(varhai+next_index, HAINUM-next_index);
-                    while(used_index[last_index])
-                        ++last_index;
-                    used_index[j] = used_index[next_index] = used_index[last_index] = 1;
-                    subhai[k][0] = varhai[j];
-                    subhai[k][1] = varhai[next_index];
-                    subhai[k][2] = varhai[last_index];
-                    ++k;
+            Tile subhai[HAINUM/3][3] = {{Red}};
+            int used_index[HAINUM] = {0};
+            used_index[0] = used_index[1] = 1;
+            int k = 0;
+            for(int j = 2; j < HAINUM; ) {
+                if(used_index[j]) {
+                    ++j;
+                    continue;
                 }
-                for(int j = 0; j < HAINUM/3; ++j)
-                    _hai_copy(varhai+2+3*j, subhai[j], 3);
-            /* } */
+                    
+                if((_is_chow(varhai+j) || _is_pung(varhai+j)) && !(used_index[j+1]) && !(used_index[j+2])){
+                    _hai_copy(subhai[k], varhai+j, 3);
+                    used_index[j] = used_index[j+1] = used_index[j+2] = 1;
+                    j+=3;
+                    ++k;
+                    continue;
+                }
+                    
+                int next_index = -1, last_index = -1;
+                next_index = j+_find_next_tile_index(varhai+j, HAINUM-j);
+                while(used_index[next_index])
+                    ++next_index;
+                last_index = next_index+_find_next_tile_index(varhai+next_index, HAINUM-next_index);
+                while(used_index[last_index])
+                    ++last_index;
+                used_index[j] = used_index[next_index] = used_index[last_index] = 1;
+                subhai[k][0] = varhai[j];
+                subhai[k][1] = varhai[next_index];
+                subhai[k][2] = varhai[last_index];
+                ++k;
+            }
+            for(int j = 0; j < HAINUM/3; ++j)
+                _hai_copy(varhai+2+3*j, subhai[j], 3);
 
             hai_score = score(varhai, hand_check, hai_score);
         }
@@ -274,7 +256,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     hand_check[i] = 1;
     i = _anko(hai);
     hand_check[i] = 1;
-    i = _shift_pungs(hai);
+    i = _step_pungs(hai);
     hand_check[i] = 1;
 
     unsigned long long comb = _calc_combination(hai);
@@ -312,18 +294,10 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 80;
 
     if(hand_check[Straight])
-        result += 15;
+        result += 10;
 
     if(hand_check[SameChow])
         result += 20;
-    /* // 一色三同順以三連刻計 */
-    /* else if(hand_check[SameTripleChow]) { */
-    /*     patterns[AllPungs] += 1; */
-    /*     combinations[AllPungs] += comb; */
-    /*     patterns[TripleAnko] += 1; */
-    /*     combinations[TripleAnko] += comb; */
-    /*     result += 100+40-5; */
-    /* } */
 
     if(hand_check[MixTripleChow])
         result += 35;
@@ -341,9 +315,9 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[LittleThreeDragons])
         result += 80;
 
-    if(hand_check[DoubleShiftPung])
+    if(hand_check[DoubleStepPung])
         result += 20;
-    else if(hand_check[TripleShiftPung])
+    else if(hand_check[TripleStepPung])
         result += 80;
 
     if(result > 160) // hard cap
@@ -418,8 +392,6 @@ const char* type_name(Hands h)
         return "混老頭";
     case SameChow:
         return "一般高";
-    /* case SameTripleChow: */
-    /*     return "三同順"; */
     case MixTripleChow:
         return "三色同順";
     case AllPungs:
@@ -434,9 +406,9 @@ const char* type_name(Hands h)
         return "二暗刻";
     case TripleAnko:
         return "三暗刻";
-    case DoubleShiftPung:
+    case DoubleStepPung:
         return "二連刻";
-    case TripleShiftPung:
+    case TripleStepPung:
         return "三連刻";
     case LittleThreeDragons:
         return "小三元";
@@ -787,14 +759,14 @@ Hands _anko(Tile *hai)
 }
 
 /* 連刻類 */
-Hands _shift_pungs(Tile *hai)
+Hands _step_pungs(Tile *hai)
 {
     // 三連刻
     if(_all_pungs(hai) == AllPungs) {
         if(hai[5] == hai[2] + 1 && hai[8] == hai[5] + 1) {
             switch(hai[2]) {
             case B1...B4: case C1...C4: case D1...D4:
-                return TripleShiftPung;
+                return TripleStepPung;
             default:
                 break;
             }
@@ -805,7 +777,7 @@ Hands _shift_pungs(Tile *hai)
     if(hai[5] == hai[2] + 1 && _is_pung(hai+5) && _is_pung(hai+2)) {
         switch(hai[2]) {
         case B1...B5: case C1...C5: case D1...D5:
-            return DoubleShiftPung;
+            return DoubleStepPung;
         default:
             break;
         }
@@ -813,7 +785,7 @@ Hands _shift_pungs(Tile *hai)
     if(hai[8] == hai[5] + 1 && _is_pung(hai+8) && _is_pung(hai+5)) {
         switch(hai[5]) {
         case B1...B5: case C1...C5: case D1...D5:
-            return DoubleShiftPung;
+            return DoubleStepPung;
         default:
             break;
         }
@@ -821,7 +793,7 @@ Hands _shift_pungs(Tile *hai)
     if(hai[8] == hai[2] + 1 && _is_pung(hai+8) && _is_pung(hai+2)) {
         switch(hai[2]) {
         case B1...B5: case C1...C5: case D1...D5:
-            return DoubleShiftPung;
+            return DoubleStepPung;
         default:
             break;
         }
