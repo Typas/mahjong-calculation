@@ -340,7 +340,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         return 320;
     }
 
-    // 非役滿
+    // 非役滿分數
     unsigned result = 0;
 
     if(hand_check[PinHu])
@@ -360,6 +360,8 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
 
     if(hand_check[Straight])
         result += 30;
+    else if(hand_check[MixStraight])
+        result += 5;
 
     if(hand_check[SameChow])
         result += 10;
@@ -370,6 +372,12 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 20;
     else if(hand_check[TriplePung])
         result += 120;
+    else if(hand_check[DoublePong])
+        result += 10;
+    else if(hand_check[DoubleDoublePong])
+        result += 80;
+    else if(hand_check[DoubleMixDoubleChow])
+        result += 10;
 
     if(hand_check[AllPungs])
         result += 40;
@@ -383,6 +391,10 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 120;
     else if(hand_check[FourStepPung])
         result += 320;
+    else if(hand_check[TwoStepPung])
+        result += 10;
+    else if(hand_check[DoubleTwoStepPung])
+        result += 80;
 
     if(hand_check[LittleThreeDragons])
         result += 60;
@@ -390,6 +402,14 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 130;
     else if(hand_check[LittleFourWinds])
         result += 200;
+
+    if(hand_check[AllTypes])
+        result += 10;
+
+    if(hand_check[FourStepChow])
+        result += 115;
+    else if(hand_check[ThreeStepChow])
+        result += 20;
 
     if(result > 320) // hard cap
         result = 320;
@@ -1193,54 +1213,80 @@ Hands _anko(Tile* hai) {
 }
 
 Hands _all_types(Tile* hai) {
-    int has_color[5] = {0};
     switch(hai[0]) {
     case Red...White:
-        has_color[0] = 1;
-        break;
-    case East...North:
-        has_color[1] = 1;
-        break;
-    case B1...BAMBOO_LAST:
-        has_color[2] = 1;
-        break;
-    case C1...CHARACTER_LAST:
-        has_color[3] = 1;
-        break;
-    case D1...DOTS_LAST:
-        has_color[4] = 1;
-        break;
-    default:
-        break;
-    }
-    for(int i=2; i<HAINUM; i+=3) {
-        switch(hai[i]) {
-        case Red...White:
-            has_color[0] = 1;
-            break;
+        switch(hai[2]) {
         case East...North:
-            has_color[1] = 1;
-            break;
-        case B1...BAMBOO_LAST:
-            has_color[2] = 1;
-            break;
-        case C1...CHARACTER_LAST:
-            has_color[3] = 1;
-            break;
-        case D1...DOTS_LAST:
-            has_color[4] = 1;
-            break;
+            switch(hai[5]) {
+            case B1...BAMBOO_LAST:
+                switch(hai[8]) {
+                case C1...CHARACTER_LAST:
+                    switch(hai[11]) {
+                    case D1...DOTS_LAST:
+                        return AllTypes;
+                    default:
+                        break;
+                    }
+                default:
+                    break;
+                }
+            default:
+                break;
+            }
         default:
             break;
         }
+    default:
+        return Not;
     }
+    /* int has_color[5] = {0}; */
+    /* switch(hai[0]) { */
+    /* case Red...White: */
+    /*     has_color[0] = 1; */
+    /*     break; */
+    /* case East...North: */
+    /*     has_color[1] = 1; */
+    /*     break; */
+    /* case B1...BAMBOO_LAST: */
+    /*     has_color[2] = 1; */
+    /*     break; */
+    /* case C1...CHARACTER_LAST: */
+    /*     has_color[3] = 1; */
+    /*     break; */
+    /* case D1...DOTS_LAST: */
+    /*     has_color[4] = 1; */
+    /*     break; */
+    /* default: */
+    /*     break; */
+    /* } */
+    /* for(int i=2; i<HAINUM; i+=3) { */
+    /*     switch(hai[i]) { */
+    /*     case Red...White: */
+    /*         has_color[0] = 1; */
+    /*         break; */
+    /*     case East...North: */
+    /*         has_color[1] = 1; */
+    /*         break; */
+    /*     case B1...BAMBOO_LAST: */
+    /*         has_color[2] = 1; */
+    /*         break; */
+    /*     case C1...CHARACTER_LAST: */
+    /*         has_color[3] = 1; */
+    /*         break; */
+    /*     case D1...DOTS_LAST: */
+    /*         has_color[4] = 1; */
+    /*         break; */
+    /*     default: */
+    /*         break; */
+    /*     } */
+    /* } */
 
-    int is_all = 1;
-    for(int i=0; i<5; ++i) {
-        is_all &= has_color[i];
-    }
+    /* int is_all = 1; */
+    /* for(int i=0; i<5; ++i) { */
+    /*     is_all &= has_color[i]; */
+    /* } */
 
-    return (is_all ? AllTypes : Not);
+    /* return (is_all ? AllTypes : Not); */
 }
 
 Hands _step_chows(Tile* hai) {
