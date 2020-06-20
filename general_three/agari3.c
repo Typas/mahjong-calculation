@@ -36,6 +36,9 @@ typedef enum Hands {
     PinHu, // 平和
     Dragon, // 番牌
     Straight, // 一氣通貫
+    Simple, // 斷幺
+    MixWithTerminal, // 混全帶
+    PureWithTerminal, // 清全帶
     MixTerminal, // 混老頭
     SameChow, // 一般高
     MixTripleChow, // 三色同順
@@ -266,7 +269,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         for(Hands i = PureTerminal; i < _hands_end; ++i) {
             patterns[i] += hand_check[i];
             combinations[i] += hand_check[i]*comb;
-            scores[i] += ((i==PureTerminal)?200:200)*comb*hand_check[i] - current_score*comb*old_check[i];
+            scores[i] += 160*comb*hand_check[i] - current_score*comb*old_check[i];
         }
         for(Hands i = PinHu; i < PureTerminal; ++i) {
             patterns[i] -= old_check[i];
@@ -275,9 +278,9 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
             old_check[i] = 0;
         }
         // 回傳最大值
-        if(hand_check[BigThreeDragons] | hand_check[PureTerminal])
-            return 200;
-        else
+        /* if(hand_check[BigThreeDragons] | hand_check[PureTerminal]) */
+        /*     return 160; */
+        /* else */
             return 160;
     }
 
@@ -290,17 +293,25 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     if(hand_check[Dragon])
         result += 20;
     
-    if(hand_check[MixTerminal])
+
+    if(hand_check[Simple])
+        result += 10;
+    else if(hand_check[MixWithTerminal])
+        result += 15;
+    else if(hand_check[PureWithTerminal])
+        result += 20;
+    else if(hand_check[MixTerminal])
         result += 80;
 
-    if(hand_check[Straight])
-        result += 10;
+    /* if(hand_check[Straight]) */
+    /*     result += 10; */
+
 
     if(hand_check[SameChow])
-        result += 20;
+        result += 10;
 
     if(hand_check[MixTripleChow])
-        result += 35;
+        result += 25;
     else if(hand_check[TriplePung])
         result += 120;
 
@@ -388,6 +399,12 @@ const char* type_name(Hands h)
         return "番牌";
     case Straight:
         return "一氣通貫";
+    case Simple:
+        return "斷幺";
+    case MixWithTerminal:
+        return "混全帶";
+    case PureWithTerminal:
+        return "清全帶";
     case MixTerminal:
         return "混老頭";
     case SameChow:
@@ -617,7 +634,44 @@ Hands _terminal(Tile *hai)
            && (_is_terminal(hai[8]) || _is_honour(hai[8])))
             return MixTerminal;
     }
-    return Not;
+    // 斷幺
+    int is_simple = 1;
+    for(int i=0; i<HAINUM; ++i) {
+        if(_is_terminal(hai[i]) || _is_honour(hai[i])) {
+            is_simple = 0;
+            break;
+        }
+    }
+    if(is_simple)
+        return Simple;
+
+    int is_pure = 1;
+    if(_is_terminal(hai[0]) || _is_honour(hai[0])) {
+        if(_is_honour(hai[0]))
+            is_pure = 0;
+        for(int i=2; i<HAINUM; i+=3) {
+            if(_is_chow(hai+i)) {
+                if(!_is_terminal(hai[i]) && !_is_terminal(hai[i+2]))
+                    return Not;
+            }
+            else {
+                if(!_is_terminal(hai[i])) {
+                    if(!_is_honour(hai[i]))
+                        return Not;
+                    else
+                        is_pure = 0;
+                }
+            }
+        }
+    }
+    else {
+        return Not;
+    }
+
+    if(is_pure)
+        return PureWithTerminal;
+    else
+        return MixWithTerminal;
 }
 
 /* 同順類 */

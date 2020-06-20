@@ -71,18 +71,31 @@ typedef enum Hands {
     Dragon,             // 番牌
     Simple,             // 斷么
     Straight,           // 一氣通貫
+    MixStraight,        // 三色通貫
+    AllTypes,           // 五門齊
+    ThreeStepChow,      // 一色三步高
+    FourStepChow,       // 一色四步高
     MixWithTerminal,    // 混全帶
     PureWithTerminal,   // 純全帶
     MixTerminal,        // 混老頭
     SameChow,           // 一般高
     DoubleSameChow,     // 二般高
+    MixDoubleChow,      // 二色同順
+    DoubleMixDoubleChow,// 雙二色同順
+    DoublePong,         // 二色同刻
+    DoubleDoublePong,   // 雙二色同刻
     MixTripleChow,      // 三色同順
     TriplePung,         // 三色同刻
     AllPungs,           // 對對和
     HalfFlush,          // 混一色
     FullFlush,          // 清一色
+    TwoStepPung,        // 二連刻
+    DoubleTwoStepPung,  // 雙二連刻
     ThreeStepPung,      // 三連刻
     FourStepPung,       // 四連刻
+    OneAnko,            // 一暗刻
+    TwoAnko,            // 二暗刻
+    ThreeAnko,          // 三暗刻
     LittleThreeDragons, // 小三元
     BigThreeDragons,    // 大三元
     LittleFourWinds,    // 小四喜
@@ -124,6 +137,12 @@ Hands _flush(Tile*);
 Hands _honours(Tile*);
 /* 連刻類 */
 Hands _step_pungs(Tile*);
+/* 暗刻類 */
+Hands _anko(Tile*);
+/* 五門齊 */
+Hands _all_types(Tile*);
+/* 連順類 */
+Hands _step_chows(Tile*);
 
 // 輔助函式
 unsigned long long _calc_combination(const Tile*);
@@ -296,6 +315,9 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
     SCORE_CHECK(i, hand_check, _flush, hai);
     SCORE_CHECK(i, hand_check, _honours, hai);
     SCORE_CHECK(i, hand_check, _step_pungs, hai);
+    SCORE_CHECK(i, hand_check, _anko, hai);
+    SCORE_CHECK(i, hand_check, _all_types, hai);
+    SCORE_CHECK(i, hand_check, _step_chows, hai);
     i = _dragon(hai, &n_dragon);
     hand_check[i] = 1;
 
@@ -306,7 +328,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         for(Hands i = BigFourWinds; i < _hands_end; ++i) {
             patterns[i] += hand_check[i];
             combinations[i] += hand_check[i]*comb;
-            scores[i] += ((i==AllHonours)?320:(i==BigFourWinds||i==PureTerminal)?400:480)*comb*hand_check[i] - current_score*comb*old_check[i];
+            scores[i] += 320*comb*hand_check[i] - current_score*comb*old_check[i];
         }
         for(Hands i = PinHu; i < BigFourWinds; ++i) {
             patterns[i] -= old_check[i];
@@ -315,12 +337,7 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
             old_check[i] = 0;
         }
         // 回傳最大值
-        if(hand_check[SameQuadroChow])
-            return 480;
-        if(hand_check[BigFourWinds] | hand_check[PureTerminal])
-            return 400;
-        else
-            return 320;
+        return 320;
     }
 
     // 非役滿
@@ -363,9 +380,9 @@ unsigned score(Tile *hai, int *old_check, unsigned current_score)
         result += 80;
 
     if(hand_check[ThreeStepPung])
-        result += 80;
+        result += 120;
     else if(hand_check[FourStepPung])
-        result += 200;
+        result += 320;
 
     if(hand_check[LittleThreeDragons])
         result += 60;
@@ -445,16 +462,32 @@ const char* type_name(Hands h)
         return "斷么";
     case Straight:
         return "一氣通貫";
+    case MixStraight:
+        return "三色通貫";
+    case AllTypes:
+        return "五門齊";
+    case ThreeStepChow:
+        return "三連順";
+    case FourStepChow:
+        return "四連順";
     case MixWithTerminal:
-        return "混全帶么";
+        return "混全帶幺";
     case PureWithTerminal:
-        return "純全帶么";
+        return "純全帶幺";
     case MixTerminal:
         return "混老頭";
     case SameChow:
         return "一般高";
     case DoubleSameChow:
         return "二般高";
+    case MixDoubleChow:
+        return "二色同順";
+    case DoubleMixDoubleChow:
+        return "雙二色同順";
+    case DoublePong:
+        return "二色同刻";
+    case DoubleDoublePong:
+        return "雙二色同刻";
     case MixTripleChow:
         return "三色同順";
     case TriplePung:
@@ -465,10 +498,20 @@ const char* type_name(Hands h)
         return "混一色";
     case FullFlush:
         return "清一色";
+    case TwoStepPung:
+        return "二連刻";
+    case DoubleTwoStepPung:
+        return "雙二連刻";
     case ThreeStepPung:
         return "三連刻";
     case FourStepPung:
         return "四連刻";
+    case OneAnko:
+        return "一暗刻";
+    case TwoAnko:
+        return "二暗刻";
+    case ThreeAnko:
+        return "三暗刻";
     case LittleThreeDragons:
         return "小三元";
     case BigThreeDragons:
@@ -655,10 +698,12 @@ Hands _straight(Tile *hai)
     Hands result = Not;
     int chows[SETNUM] = {0}; // boolean
     Hands _find_straight(Tile*, int*, int, int, int);
+    Hands _find_mix_straight(Tile*, int*, int, int, int);
 
     for(int i=0; i<SETNUM; ++i)
         chows[i] = _is_chow(hai+3*i+2);
     TRIPLEFUNC(result, _find_straight, hai, chows);
+    TRIPLEFUNC(result, _find_mix_straight, hai, chows);
 
     return result;
 }
@@ -673,6 +718,36 @@ Hands _find_straight(Tile* hai, int* chows, int a, int b, int c)
             default:
                 return Not;
             }
+        }
+    }
+    return Not;
+}
+
+Hands _find_mix_straight(Tile* hai, int* chows, int a, int b, int c)
+{
+    if(chows[a/3] & chows[b/3] & chows[c/3]) {
+        // 三色齊全
+        // B1 C4 D7
+        // B1 C7 D4
+        // B4 C1 D7
+        // B4 C7 D1
+        // B7 C1 D4
+        // B7 C4 D1
+        switch(hai[a]) {
+        case B1:
+            if((hai[b] == C4 && hai[c] == D7) || (hai[b] == C7 && hai[c] == D4))
+                return MixStraight;
+            break;
+        case B4:
+            if((hai[b] == C1 && hai[c] == D7) || (hai[b] == C7 && hai[c] == D1))
+                return MixStraight;
+            break;
+        case B7:
+            if((hai[b] == C4 && hai[c] == D1) || (hai[b] == C1 && hai[c] == D4))
+                return MixStraight;
+            break;
+        default:
+            break;
         }
     }
     return Not;
@@ -758,6 +833,10 @@ Hands _mix_triple(Tile *hai)
     Hands result = Not;
     Hands _find_triple_pung(Tile*, int*, int, int, int);
     Hands _find_triple_chow(Tile*, int*, int, int, int);
+    Hands _find_double_double_pong(Tile*, int*, int, int, int, int);
+    Hands _find_double_double_chow(Tile*, int*, int, int, int, int);
+    Hands _find_mix_double_chow(Tile*, int*, int, int);
+    Hands _find_mix_double_pong(Tile*, int*, int, int);
 
     // 三色同刻
     TRIPLEFUNC(result, _find_triple_pung, hai, pungs);
@@ -766,9 +845,34 @@ Hands _mix_triple(Tile *hai)
 
     // 三色同順
     TRIPLEFUNC(result, _find_triple_chow, hai, chows);
+    if(result != Not)
+        return result;
+
+    // 雙二色同刻
+    result |= _find_double_double_pong(hai, pungs, 2, 5, 8, 11);
+    result |= _find_double_double_pong(hai, pungs, 2, 8, 5, 11);
+    result |= _find_double_double_pong(hai, pungs, 2, 11, 5, 8);
+    if(result != Not)
+        return result;
+
+    // 雙二色同順
+    result = _find_double_double_chow(hai, chows, 2, 5, 8, 11);
+    result = _find_double_double_chow(hai, chows, 2, 8, 5, 11);
+    result = _find_double_double_chow(hai, chows, 2, 11, 5, 8);
+    if(result != Not)
+        return result;
+
+    // 二色同刻
+    DUOFUNC(result, _find_mix_double_pong, hai, pungs);
+    if(result != Not)
+        return result;
+
+    // 二色同順
+    DUOFUNC(result, _find_mix_double_chow, hai, chows);
 
     return result;
 }
+
 Hands _find_triple_pung(Tile* hai, int* arr, int a, int b, int c)
 {
     if(arr[a/3] & arr[b/3] & arr[c/3]) {
@@ -794,6 +898,94 @@ Hands _find_triple_chow(Tile* hai, int* arr, int a, int b, int c)
                 return MixTripleChow;
             default:
                 return Not;
+            }
+        }
+    }
+    return Not;
+}
+
+Hands _find_double_double_pong(Tile* hai, int* arr, int a, int b, int c, int d)
+{
+    if(arr[a/3] & arr[b/3] & arr[c/3] & arr[d/3]) {
+        if((hai[b] == hai[a]+TILE_PER_COLOR || hai[b] == hai[a]+TILE_PER_COLOR*2)
+           && (hai[d] == hai[c]+TILE_PER_COLOR || hai[d] == hai[c]+TILE_PER_COLOR*2)) {
+            int is_dd = 1;
+            switch(hai[a]) {
+            case B1...BAMBOO_LAST: case C1...CHARACTER_LAST:
+                is_dd &= 1;
+                break;
+            default:
+                is_dd &= 0;
+                break;
+            }
+            switch(hai[c]) {
+            case B1...BAMBOO_LAST: case C1...CHARACTER_LAST:
+                is_dd &= 1;
+                break;
+            default:
+                is_dd &= 0;
+                break;
+            }
+            if(is_dd)
+                return DoubleDoublePong;
+        }
+    }
+    return Not;
+}
+
+Hands _find_double_double_chow(Tile* hai, int* arr, int a, int b, int c, int d)
+{
+    if(arr[a/3] & arr[b/3] & arr[c/3] & arr[d/3]) {
+        if((hai[b] == hai[a]+TILE_PER_COLOR || hai[b] == hai[a]+TILE_PER_COLOR*2)
+           && (hai[d] == hai[c]+TILE_PER_COLOR || hai[d] == hai[c]+TILE_PER_COLOR*2)) {
+            int is_dd = 1;
+            switch(hai[a]) {
+            case B1...(BAMBOO_LAST-2): case C1...(CHARACTER_LAST-2):
+                is_dd &= 1;
+                break;
+            default:
+                is_dd &= 0;
+                break;
+            }
+            switch(hai[c]) {
+            case B1...(BAMBOO_LAST-2): case C1...(CHARACTER_LAST-2):
+                is_dd &= 1;
+                break;
+            default:
+                is_dd &= 0;
+                break;
+            }
+            if(is_dd)
+                return DoubleMixDoubleChow;
+        }
+    }
+    return Not;
+}
+
+Hands _find_mix_double_chow(Tile* hai, int* arr, int a, int b)
+{
+    if(arr[a/3] & arr[b/3]) {
+        if(hai[b] == hai[a]+TILE_PER_COLOR || hai[b] == hai[a]+TILE_PER_COLOR*2) {
+            switch(hai[a]) {
+            case B1...(BAMBOO_LAST-2): case C1...(CHARACTER_LAST-2):
+                return MixDoubleChow;
+            default:
+                break;
+            }
+        }
+    }
+    return Not;
+}
+
+Hands _find_mix_double_pong(Tile* hai, int* arr, int a, int b)
+{
+    if(arr[a/3] & arr[b/3]) {
+        if(hai[b] == hai[a]+TILE_PER_COLOR || hai[b] == hai[a]+TILE_PER_COLOR*2) {
+            switch(hai[a]) {
+            case B1...BAMBOO_LAST: case C1...CHARACTER_LAST:
+                return DoublePong;
+            default:
+                break;
             }
         }
     }
@@ -889,6 +1081,8 @@ Hands _step_pungs(Tile* hai)
     Hands result = Not;
     int pungs[SETNUM] = {0};
     Hands _three_step_pungs(Tile*, int*, int, int, int);
+    Hands _double_two_step_pongs(Tile*, int*, int, int, int, int);
+    Hands _two_step_pongs(Tile*, int*, int, int);
 
     /* 四連刻 */
     if(_all_pungs(hai) == AllPungs) {
@@ -906,6 +1100,18 @@ Hands _step_pungs(Tile* hai)
         pungs[i] = _is_pung(hai+i*3+2);
     /* 三連刻 */
     TRIPLEFUNC(result, _three_step_pungs, hai, pungs);
+    if(result != Not)
+        return result;
+
+    /* 雙二連刻 */
+    result |= _double_two_step_pongs(hai, pungs, 2, 5, 8, 11);
+    result |= _double_two_step_pongs(hai, pungs, 2, 8, 5, 11);
+    result |= _double_two_step_pongs(hai, pungs, 2, 11, 5, 8);
+    if(result != Not)
+        return result;
+
+    /* 二連刻 */
+    DUOFUNC(result, _two_step_pongs, hai, pungs);
 
     return result;
 }
@@ -917,6 +1123,155 @@ Hands _three_step_pungs(Tile* hai, int* pungs, int a, int b, int c)
             switch(hai[a]) {
             case B1...(BAMBOO_LAST-2): case C1...(CHARACTER_LAST-2): case D1...(DOTS_LAST-2):
                 return ThreeStepPung;
+            default:
+                return Not;
+            }
+        }
+    }
+    return Not;
+}
+
+Hands _double_two_step_pongs(Tile* hai, int* pungs, int a, int b, int c, int d)
+{
+    if(pungs[a/3] & pungs[b/3] & pungs[c/3] & pungs[d/3]) {
+        if(hai[b] == hai[a]+1 && hai[d] == hai[c]+1) {
+            int is_double = 1;
+            switch(hai[a]) {
+            case B1...(BAMBOO_LAST-1): case C1...(CHARACTER_LAST-1): case D1...(DOTS_LAST-1):
+                is_double &= 1;
+                break;
+            default:
+                is_double &= 0;
+                break;
+            }
+            switch(hai[c]) {
+            case B1...(BAMBOO_LAST-1): case C1...(CHARACTER_LAST-1): case D1...(DOTS_LAST-1):
+                is_double &= 1;
+                break;
+            default:
+                is_double &= 0;
+                break;
+            }
+            if(is_double)
+                return DoubleTwoStepPung;
+        }
+    }
+    return Not;
+}
+
+Hands _two_step_pongs(Tile* hai, int* pungs, int a, int b)
+{
+    if(pungs[a/3] & pungs[b/3]) {
+        if(hai[b] == hai[a]+1) {
+            switch(hai[a]) {
+            case B1...(BAMBOO_LAST-1): case C1...(CHARACTER_LAST-1): case D1...(DOTS_LAST-1):
+                return TwoStepPung;
+            default:
+                break;
+            }
+        }
+    }
+    return Not;
+}
+
+Hands _anko(Tile* hai) {
+    int count = 0;
+    for(int i=2; i<HAINUM; i+=3) {
+        if(_is_pung(hai+i))
+            ++count;
+    }
+    switch(count) {
+    case 1:
+        return OneAnko;
+    case 2:
+        return TwoAnko;
+    case 3:
+        return ThreeAnko;
+    default:
+        return Not;
+    }
+}
+
+Hands _all_types(Tile* hai) {
+    int has_color[5] = {0};
+    switch(hai[0]) {
+    case Red...White:
+        has_color[0] = 1;
+        break;
+    case East...North:
+        has_color[1] = 1;
+        break;
+    case B1...BAMBOO_LAST:
+        has_color[2] = 1;
+        break;
+    case C1...CHARACTER_LAST:
+        has_color[3] = 1;
+        break;
+    case D1...DOTS_LAST:
+        has_color[4] = 1;
+        break;
+    default:
+        break;
+    }
+    for(int i=2; i<HAINUM; i+=3) {
+        switch(hai[i]) {
+        case Red...White:
+            has_color[0] = 1;
+            break;
+        case East...North:
+            has_color[1] = 1;
+            break;
+        case B1...BAMBOO_LAST:
+            has_color[2] = 1;
+            break;
+        case C1...CHARACTER_LAST:
+            has_color[3] = 1;
+            break;
+        case D1...DOTS_LAST:
+            has_color[4] = 1;
+            break;
+        default:
+            break;
+        }
+    }
+
+    int is_all = 1;
+    for(int i=0; i<5; ++i) {
+        is_all &= has_color[i];
+    }
+
+    return (is_all ? AllTypes : Not);
+}
+
+Hands _step_chows(Tile* hai) {
+    Hands result = Not;
+    int chows[SETNUM] = {0};
+    Hands _three_step_chows(Tile*, int*, int, int, int);
+
+    if(_pin_hu(hai) == PinHu) {
+        if(hai[5] == hai[2]+1 && hai[8] == hai[5]+1 && hai[11] == hai[8]+1) {
+            switch(hai[2]) {
+            case B1...(BAMBOO_LAST-5): case C1...(CHARACTER_LAST-5): case D1...(DOTS_LAST-5):
+                return FourStepChow;
+            default:
+                break;
+            }
+        }
+    }
+
+    for(int i=0; i<SETNUM; ++i)
+        chows[i] = _is_chow(hai+i*3+2);
+    TRIPLEFUNC(result, _three_step_chows, hai, chows);
+
+    return result;
+}
+
+Hands _three_step_chows(Tile* hai, int* chows, int a, int b, int c) {
+    if(chows[a/3] & chows[b/3] & chows[c/3]) {
+        if(hai[b] == hai[a]+1 && hai[c] == hai[b]+1) {
+            switch(hai[a]) {
+            case B1...(BAMBOO_LAST-4): case C1...(CHARACTER_LAST-4): case D1...(DOTS_LAST-4):
+                return ThreeStepChow;
             default:
                 return Not;
             }
