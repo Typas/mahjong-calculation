@@ -12,6 +12,8 @@ static unsigned long long combination_count = 0;
 static unsigned long long agari_count = 0;
 static unsigned long long pattern_count = 0;
 static unsigned long long agari_pattern_count = 0;
+char* save_arr = NULL;
+char* save_ptr = NULL;
 FILE* output_file = NULL;
 
 typedef enum Tile{
@@ -46,7 +48,7 @@ int check_hai(Tile [], int);
 int main(int argc, char *argv[])
 {
     Tile hai[HAINUM];
-    char* fname = "patterns_general_three.dat";
+    char* fname = "patterns_general_three_test.dat";
 
     // initialization
     for(int i = 0; i < HAINUM; ++i)
@@ -56,6 +58,10 @@ int main(int argc, char *argv[])
     output_file = fopen(fname, "wb");
     if(output_file == NULL)
         exit(1);
+    save_arr = (char*)malloc(209715200);
+    if(save_arr == NULL)
+        exit(1);
+    save_ptr = save_arr;
 
     // loop to end
     hailoop(hai, Red, 0);
@@ -65,6 +71,7 @@ int main(int argc, char *argv[])
     printf("total pattern: %llu\n", pattern_count);
     printf("total agari pattern: %llu\n", agari_pattern_count);
 
+    fwrite(save_arr, 1, save_ptr-save_arr, output_file);
     fclose(output_file);
     
     return 0;
@@ -167,11 +174,9 @@ int is_agari(Tile hai[])
         tot_flag += flag[i];
     }
     if(tot_flag != 0) {
-        char agari_pattern[HAINUM] = {'\0'};
         for(int i = 0; i < HAINUM ; ++i) {
-            agari_pattern[i] = hai[i] + 'A';
+            *save_ptr++ = hai[i] + 'A';
         }
-        fwrite(agari_pattern, 1, HAINUM, output_file);
     }
     
     return (tot_flag != 0);
