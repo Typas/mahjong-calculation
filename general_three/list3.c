@@ -55,9 +55,6 @@ int main(int argc, char *argv[])
         hai[i] = Red;
     if(argc > 1)
         fname = argv[1];
-    output_file = fopen(fname, "wb");
-    if(output_file == NULL)
-        exit(1);
     save_arr = (char*)malloc(209715200);
     if(save_arr == NULL)
         exit(1);
@@ -71,6 +68,9 @@ int main(int argc, char *argv[])
     printf("total pattern: %llu\n", pattern_count);
     printf("total agari pattern: %llu\n", agari_pattern_count);
 
+    output_file = fopen(fname, "wb");
+    if(output_file == NULL)
+        exit(1);
     fwrite(save_arr, 1, save_ptr-save_arr, output_file);
     fclose(output_file);
     
