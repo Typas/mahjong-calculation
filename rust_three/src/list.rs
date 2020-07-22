@@ -1,11 +1,14 @@
 use std::fs::File;
 use std::io::Write;
+use std::ops::Index;
 use lazy_static::lazy_static;
 use num_traits::FromPrimitive;
 use num_derive::FromPrimitive;
-use std::sync::{Mutex};
+use rayon::iter::ParallelBridge;
 
 const HAINUM: usize = 11;
+const NR_PER_TILE: usize = 4;
+const TILE_LAST_KIND: Tile = Tile::Dot6;
 
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, FromPrimitive)]
 enum Tile {
@@ -32,13 +35,16 @@ enum Tile {
     Dot6,
 }
 
-impl Tile {
-    fn next(&mut self) {
+impl Iterator for Tile {
+    type Item = Tile;
+
+    fn next(&mut self) -> Option<Tile> {
         let next = match self {
-            Tile::Dot6 => 0,
+            &mut TILE_LAST_KIND => 0,
             _ => self.clone() as u8 + 1,
         };
         *self = Tile::from_u8(next).unwrap();
+        Some(self.clone())
     }
 }
 
@@ -90,61 +96,76 @@ impl HaiSet {
     }
 }
 
+impl Index<usize> for HaiSet {
+    type Output = Tile;
+
+    fn index(&self, i: usize) -> &Self::Output {
+        &self.hai[i]
+    }
+}
+
 struct HaiSetGen {
-    set: Mutex<HaiSet>,
+    set: HaiSet,
 }
 
 impl HaiSetGen {
     fn new() -> HaiSetGen {
+        const N_LAST: usize = HAINUM % NR_PER_TILE - 1;
         let mut set = HaiSet::new();
-        for _ in 0..4 {set.push(Tile::Red);}
-        for _ in 0..4 {set.push(Tile::Green);}
-        for _ in 0..2 {set.push(Tile::White);}
+        for _ in 0..NR_PER_TILE {set.push(Tile::Red);}
+        for _ in 0..NR_PER_TILE {set.push(Tile::Green);}
+        for _ in 0..N_LAST {set.push(Tile::White);}
         set.push(Tile::Green);
         HaiSetGen {
-            set: Mutex::new(set)
+            set
         }
-    }
-
-    fn get(&self) -> Option<HaiSet> {
-        if self.is_last() {
-            return None;
-        }
-        // iterate to next
-        match self.set.lock().unwrap().hai.last()? {
-            Tile::Dot6 => {
-                let mut n = self.set.lock().unwrap().hai.iter()
-                    .rposition(|x| x != &Tile::Dot6)?;
-                while n < HAINUM
-                    && self.set.lock().unwrap().hai[n] != Tile::Dot6
-                {
-                    self.set.lock().unwrap().hai[n].next();
-                    let t = self.set.lock().unwrap().hai[n].clone();
-                    for c in self.set.lock().unwrap().hai
-                                     .iter_mut()
-                                     .skip(n) {
-                                         *c = t.clone();
-                                     }
-                    n += 4;
-                }
-            },
-            _ => self.set.lock().unwrap().hai[HAINUM-1].next(),
-        }
-
-        Some(self.set.lock().unwrap().clone())
     }
 
     fn is_last(&self) -> bool {
         lazy_static! {
+            // still some annoying const here
             static ref LAST_PATTERN: HaiSet = {
                 let mut set = HaiSet::new();
-                for _ in 0..3 {set.push(Tile::Dot4);}
-                for _ in 0..4 {set.push(Tile::Dot5);}
-                for _ in 0..4 {set.push(Tile::Dot6);}
+                for _ in 0..HAINUM%NR_PER_TILE {set.push(Tile::Dot4);}
+                for _ in 0..NR_PER_TILE {set.push(Tile::Dot5);}
+                for _ in 0..NR_PER_TILE {set.push(TILE_LAST_KIND);}
                 set
             };
         }
-        (*LAST_PATTERN).hai == self.set.lock().unwrap().hai
+        (*LAST_PATTERN).hai == self.set.hai
+    }
+}
+
+impl Iterator for HaiSetGen {
+    type Item = HaiSet;
+
+    fn next(&mut self) -> Option<HaiSet> {
+        if self.is_last() {
+            return None;
+        }
+        // iterate to next
+        match self.set.hai.last()? {
+            &TILE_LAST_KIND => {
+                let mut n = self.set.hai.iter()
+                    .rposition(|x| x != &TILE_LAST_KIND)?;
+                while n < HAINUM
+                    && self.set.hai[n] != TILE_LAST_KIND
+                {
+                    self.set.hai[n].next();
+                    let t = self.set.hai[n].clone();
+                    for c in self.set.hai
+                                     .iter_mut()
+                                     .skip(n) {
+                                         *c = t.clone();
+                                     }
+
+     n += 4;
+                }
+            },
+            _ => {self.set.hai[HAINUM-1].next();},
+        }
+
+        Some(self.set.clone())
     }
 }
 
@@ -210,16 +231,45 @@ fn main() -> std::io::Result<()> {
 fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
 {
     let mut records: Vec<HaiSet> = Vec::new();
-    let hsg = HaiSetGen::new();
+    let mut hsg = HaiSetGen::new();
     const NR_WORKER: u8 = 100;
-    for _ in 0..=NR_WORKER {
-        while let Some(hs) = hsg.get() {
-            let tile_counts: Vec<u8> = vec![1];
+    let hss = hsg.into_iter().par_bridge();
 
+    records
+}
+
+fn combination(hai: &HaiSet) -> Option<u64> {
+    let mut ts = Vec::new();
+    let mut ns = Vec::new();
+    ts.push(&hai[0]);
+    ns.push(1);
+
+    for i in 1..HAINUM {
+        if &&hai[i] == ts.last()? {
+            let last = ns.last_mut()?;
+            *last += 1;
+        } else {
+            ts.push(&hai[i]);
+            ns.push(1);
         }
     }
 
-    records
+    let mut product = 1;
+    for i in 1..ts.len() {
+        product *= binom(NR_PER_TILE as u64, ns[i]);
+    }
+
+    Some(product)
+}
+
+fn binom(n: u64, k: u64) -> u64 {
+    let mut res = 1;
+
+    for i in 0..k {
+        res = res * (n-i) / (i+1);
+    }
+
+    res
 }
 
 fn is_valid(hai: &HaiSet) -> bool
