@@ -41,3 +41,6 @@
 
 # Data
 *.dat
+
+# rust target
+target/
