@@ -5,6 +5,7 @@ use num_traits::FromPrimitive;
 use num_derive::FromPrimitive;
 use rayon::prelude::{IntoParallelIterator,ParallelIterator};
 use rayon::iter::ParallelBridge;
+use rayon::slice::ParallelSliceMut;
 
 const HAINUM: usize = 11;
 const NR_PER_TILE: usize = 4;
@@ -271,7 +272,7 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
     // main problem: how to record "total combination count"?
     // this should be done in the iteration,
     // since it's impossible to store 100G+ in the memory
-    let records: Vec<HaiSet>
+    let mut records: Vec<HaiSet>
         = hsg.into_iter()
              .par_bridge()
              .into_par_iter()
@@ -283,6 +284,8 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
     // })
              .filter(|hs| is_valid(hs))
              .collect();
+
+    records.par_sort();
 
     records.iter().for_each(|hs| {
         mj_stat.valid_count += combination(hs).unwrap();
@@ -309,7 +312,7 @@ fn combination(hai: &HaiSet) -> Option<u64> {
     }
 
     let mut product = 1;
-    for i in 1..ts.len() {
+    for i in 0..ts.len() {
         product *= binom(NR_PER_TILE as u64, ns[i]);
     }
 
@@ -480,5 +483,13 @@ mod tests {
             Tile::Dot4, Tile::Dot5,
         ];
         assert_eq!(check_hai(&pattern), false);
+    }
+
+    #[test]
+    fn test_combination() {
+        let pattern = HaiSet{hai: vec![Tile::Dot4, Tile::Dot4, Tile::Dot4,
+                           Tile::Dot5, Tile::Dot5, Tile::Dot5, Tile::Dot5,
+                            Tile::Dot6, Tile::Dot6, Tile::Dot6, Tile::Dot6,]};
+        assert_eq!(combination(&pattern).unwrap(), 4);
     }
 }
