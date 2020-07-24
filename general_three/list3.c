@@ -17,28 +17,28 @@ char* save_ptr = NULL;
 FILE* output_file = NULL;
 
 typedef enum Tile{
-    Red,
-    Green,
-    White,
-    B1,
-    B2,
-    B3,
-    B4,
-    B5,
-    B6,
-    C1,
-    C2,
-    C3,
-    C4,
-    C5,
-    C6,
-    D1,
-    D2,
-    D3,
-    D4,
-    D5,
-    D6,
-    _tile_end
+Red,
+Green,
+White,
+B1,
+B2,
+B3,
+B4,
+B5,
+B6,
+C1,
+C2,
+C3,
+C4,
+C5,
+C6,
+D1,
+D2,
+D3,
+D4,
+D5,
+D6,
+_tile_end
 } Tile;
 
 void hailoop(Tile [], int, int);
@@ -95,17 +95,17 @@ void hailoop(Tile hai[], int n, int layer)
         }
         for(int i=0 ; i<HAINUM; ++i) {
             switch(tile_count[i]){
-            case 0: case 4:
-                tile_count[i] = 1;
-                break;
-            case 1: case 3:
-                tile_count[i] = 4;
-                break;
-            case 2:
-                tile_count[i] = 6;
-                break;
-            default:
-                tile_count[i] = 0;
+                case 0: case 4:
+                    tile_count[i] = 1;
+                    break;
+                case 1: case 3:
+                    tile_count[i] = 4;
+                    break;
+                case 2:
+                    tile_count[i] = 6;
+                    break;
+                default:
+                    tile_count[i] = 0;
             }
             tmp_count *= tile_count[i];
         }
@@ -156,6 +156,12 @@ int is_agari(Tile hai[])
     }
     if(tot_flag == 0) return 0;
 
+    // remove duplicated pair
+    for(int i = HAINUM-2 ; i > 0 ; --i) {
+        if(flag[i] & flag[i-1])
+            flag[i] = 0;
+    }
+
     // third step: check for triples
     tot_flag = 0;
     for(int i = 0 ; i < HAINUM-1 ; ++i) {
@@ -204,10 +210,10 @@ int check_hai(Tile hai[], int n)
         if((_is_chow(hai+i) || _is_pung(hai+i)) && !(used_index[i+1]) && !(used_index[i+2])) {
             if(_is_chow(hai+i)) {
                 switch(hai[i]) {
-                ALLCASES:
+                    ALLCASES:
                     break;
-                default:
-                    return 0;
+                    default:
+                        return 0;
                 }
             }
             used_index[i] = used_index[i+1] = used_index[i+2] = 1;
@@ -228,10 +234,10 @@ int check_hai(Tile hai[], int n)
             ++last_index;
         if(hai[next_index] == hai[i]+1 && hai[last_index] == hai[next_index]+1) {
             switch(hai[i]) {
-            ALLCASES:
+                ALLCASES:
                 break;
-            default:
-                return 0;
+                default:
+                    return 0;
             }
             used_index[i] = used_index[next_index] = used_index[last_index] = 1;
         }
@@ -247,10 +253,10 @@ int _is_chow(const Tile* hai)
 {
     if(hai[1] == hai[0]+1 && hai[2] == hai[1]+1) {
         switch(hai[0]) {
-        ALLCASES:
+            ALLCASES:
             return 1;
-        default:
-            return 0;
+            default:
+                return 0;
         }
     }
     return 0;

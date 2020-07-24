@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::Write;
-use std::ops::Index;
-use lazy_static::lazy_static;
+use std::time::Instant;
 use num_traits::FromPrimitive;
 use num_derive::FromPrimitive;
 use rayon::prelude::{IntoParallelIterator,ParallelIterator};
@@ -39,15 +38,36 @@ enum Tile {
 impl std::ops::Add<u8> for Tile {
     type Output = Self;
 
-    fn add(self, other: u8) -> Self {
-        let result = (self as u8 + other) % (TILE_LAST_KIND as u8 + 1);
+    fn add(self, rhs: u8) -> Self {
+        const NR_TILE_KIND: u8 = TILE_LAST_KIND as u8 + 1;
+        let result = (self as u8 + rhs) % NR_TILE_KIND;
         Tile::from_u8(result).unwrap()
     }
 }
 
 impl std::ops::AddAssign<u8> for Tile {
-    fn add_assign(&mut self, other: u8) {
-        *self = self.clone() + other;
+    fn add_assign(&mut self, rhs: u8) {
+        *self = self.clone() + rhs;
+    }
+}
+
+impl std::ops::Sub<u8> for Tile {
+    type Output = Self;
+
+    fn sub(self, rhs: u8) -> Self {
+        const NR_TILE_KIND: i16 = TILE_LAST_KIND as i16 + 1;
+        let mut result = self as i16 + rhs as i16;
+        while result < 0 {
+            result += NR_TILE_KIND;
+        }
+
+        Tile::from_u8(result as u8).unwrap()
+    }
+}
+
+impl std::ops::SubAssign<u8> for Tile {
+    fn sub_assign(&mut self, rhs: u8) {
+        *self = self.clone() - rhs;
     }
 }
 
@@ -123,7 +143,7 @@ where
 }
 
 
-impl Index<usize> for HaiSet {
+impl std::ops::Index<usize> for HaiSet {
     type Output = Tile;
 
     fn index(&self, i: usize) -> &Self::Output {
@@ -148,53 +168,33 @@ impl HaiSetGen {
             set
         }
     }
-
-    fn is_last(&self) -> bool {
-        lazy_static! {
-            // FIXME: still some annoying const here
-            static ref LAST_PATTERN: HaiSet = {
-                let mut set = HaiSet::new();
-                for _ in 0..HAINUM%NR_PER_TILE {set.push(Tile::Dot4);}
-                for _ in 0..NR_PER_TILE {set.push(Tile::Dot5);}
-                for _ in 0..NR_PER_TILE {set.push(TILE_LAST_KIND);}
-                set
-            };
-        }
-        (*LAST_PATTERN).hai == self.set.hai
-    }
 }
 
 impl Iterator for HaiSetGen {
     type Item = HaiSet;
 
     fn next(&mut self) -> Option<HaiSet> {
-        if self.is_last() {
-            return None;
-        }
         // iterate to next
         match self.set.hai.last()? {
             &TILE_LAST_KIND => {
                 // FIXME: performance bottle neck
-                let mut n = self.set.hai.iter()
-                                        .rposition(|x| x != &TILE_LAST_KIND)?;
-                if n <= 5 {
-                    eprintln!("{:?}", self.set.hai);
-                }
-                while n < HAINUM
-                    && self.set.hai[n] != TILE_LAST_KIND
-                {
-                    if n <= 5 {
-                        eprintln!("n = {}, hai[n] = {:?}", n, self.set.hai[n]);
+                // find the `pivot` of new pattern
+                let len = self.set.hai.len();
+                let mut i = len;
+                let pivot = loop {
+                    i -= 1;
+                    let r = len - i - 1;
+                    let target = self.set.hai[i].clone() + (r / NR_PER_TILE) as u8;
+                    match (target, i) {
+                        (TILE_LAST_KIND, 0) => return None,
+                        (TILE_LAST_KIND, _) => (),
+                        _ => break i,
                     }
-                    self.set.hai[n] += 1;
-                    let t = self.set.hai[n].clone();
-                    for c in self.set.hai
-                                     .iter_mut()
-                                     .skip(n) {
-                                         *c = t.clone();
-                                     }
+                };
 
-                    n += NR_PER_TILE;
+                let hai_pivot = self.set.hai[pivot].clone() + 1;
+                for i in pivot..len {
+                    self.set.hai[i] = hai_pivot.clone() + ((i - pivot) / NR_PER_TILE) as u8;
                 }
             },
             _ => {self.set.hai[HAINUM-1] += 1;},
@@ -204,6 +204,7 @@ impl Iterator for HaiSetGen {
     }
 }
 
+#[derive(Debug)]
 struct HaiTriplet<'a>{
     s: [&'a Tile; 3]
 }
@@ -245,6 +246,7 @@ impl<'a> HaiTriplet<'a> {
 
 
 fn main() -> std::io::Result<()> {
+    let t = Instant::now();
     let mut mj_stat = MahjongStatistics::new();
     let record = hailoop(&mut mj_stat).into_iter()
                                       .map(|x| x.into_vec_u8())
@@ -259,6 +261,7 @@ fn main() -> std::io::Result<()> {
     let filename = "patterns_general_three.dat";
     let mut file = File::create(filename)?;
     file.write(&record)?;
+    println!("time used: {} secs", t.elapsed().as_secs_f64());
     Ok(())
 }
 
@@ -268,20 +271,23 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
     // main problem: how to record "total combination count"?
     // this should be done in the iteration,
     // since it's impossible to store 100G+ in the memory
-    let records: Vec<HaiSet> = hsg.into_iter()
-    // .par_bridge()
-    // .into_par_iter()
-                                  .filter(|hs| is_valid(hs))
-                                  .map(|x| {
-                                      eprintln!("done {:?}", x);
-                                      x
-                                  })
-                                  .collect();
+    let records: Vec<HaiSet>
+        = hsg.into_iter()
+             .par_bridge()
+             .into_par_iter()
+    // .map(|x| {
+    //     mj_stat.pattern_count += 1;
+    //     mj_stat.combination_count += combination(&x).unwrap();
 
-    for hs in records.iter() {
+    //     x
+    // })
+             .filter(|hs| is_valid(hs))
+             .collect();
+
+    records.iter().for_each(|hs| {
         mj_stat.valid_count += combination(hs).unwrap();
         mj_stat.valid_pattern_count += 1;
-    }
+    });
 
     records
 }
@@ -323,7 +329,6 @@ fn binom(n: u64, k: u64) -> u64 {
 fn is_valid(hai: &HaiSet) -> bool
 {
     let sum: i32 = hai.iter().map(|x| x as i32).sum();
-
     assert_eq!(hai.len(), HAINUM);
 
     // first step: check at least one pair exist
@@ -346,6 +351,13 @@ fn is_valid(hai: &HaiSet) -> bool
     }
     if possible_pairs.iter().filter(|&&x| x).count() == 0 {
         return false;
+    }
+
+    // dedup possible pairs
+    for i in (1..HAINUM-1).rev() {
+        if possible_pairs[i] && possible_pairs[i-1] {
+            possible_pairs[i] = false;
+        }
     }
 
     // final step: check for triples
@@ -390,7 +402,7 @@ fn check_hai(hai: &Vec<Tile>) -> bool
         }
 
         let triplet = HaiTriplet::new(&hai[i], &hai[i+1], &hai[i+2]);
-        if triplet.is_chow() || triplet.is_pung() && !used_index[i+1] && !used_index[i+2] {
+        if (triplet.is_chow() || triplet.is_pung()) && !(used_index[i+1]) && !(used_index[i+2]) {
             // FIXME: find a way to assign in one line
             used_index[i] = true;
             used_index[i+1] = true;
@@ -400,17 +412,17 @@ fn check_hai(hai: &Vec<Tile>) -> bool
         }
 
         let next_index = match used_index.iter()
-                                         .skip(i)
                                          .enumerate()
-                                         .find(|&(_, c)| !c)
+                                         .skip(i+1)
+                                         .find(|&(n, c)| !c && &hai[n] != &hai[i])
                                          .map(|(i, _)| i) {
                                              Some(n) => n,
                                              None => return false,
                                          };
         let last_index = match used_index.iter()
-                                         .skip(next_index)
                                          .enumerate()
-                                         .find(|&(_, c)| !c)
+                                         .skip(next_index+1)
+                                         .find(|&(n, c)| !c && &hai[n] != &hai[next_index])
                                          .map(|(i, _)| i) {
                                              Some(n) => n,
                                              None => return false,
@@ -420,13 +432,53 @@ fn check_hai(hai: &Vec<Tile>) -> bool
         if sparse_triplet.is_chow() {
             // FIXME: find a way to assign in one line
             used_index[i] = true;
-            used_index[i+1] = true;
-            used_index[i+2] = true;
+            used_index[next_index] = true;
+            used_index[last_index] = true;
+            i += 1;
             continue;
         } else {
             return false;
         }
     }
 
-    true
+    match used_index.iter().filter(|&&x| x == false).count() {
+        0 => true,
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_hai() {
+        let pattern = vec![Tile::Dot4,
+                           Tile::Dot5, Tile::Dot5, Tile::Dot5, Tile::Dot5,
+                           Tile::Dot6, Tile::Dot6, Tile::Dot6, Tile::Dot6,];
+        assert_eq!(check_hai(&pattern), true);
+
+        let pattern = vec![
+            Tile::Dot3, Tile::Dot3,
+            Tile::Dot4,
+            Tile::Dot5, Tile::Dot5, Tile::Dot5, Tile::Dot5,
+            Tile::Dot6, Tile::Dot6,
+        ];
+        assert_eq!(check_hai(&pattern), false);
+
+        let pattern = vec![
+            Tile::Character4, Tile::Character4, Tile::Character5, Tile::Character6,
+            Tile::Dot2,
+            Tile::Dot4, Tile::Dot5,
+            Tile::Dot6, Tile::Dot6,
+        ];
+        assert_eq!(check_hai(&pattern), false);
+        let pattern = vec![
+            Tile::Character4, Tile::Character4, Tile::Character5, Tile::Character6,
+            Tile::Dot2,
+            Tile::Dot3, Tile::Dot3,
+            Tile::Dot4, Tile::Dot5,
+        ];
+        assert_eq!(check_hai(&pattern), false);
+    }
 }
