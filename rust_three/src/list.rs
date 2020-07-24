@@ -74,8 +74,7 @@ struct HaiSet {
 
 impl HaiSet {
     fn new() -> HaiSet {
-        let mut hai = Vec::new();
-        hai.reserve_exact(HAINUM);
+        let hai: Vec<Tile> = Vec::with_capacity(HAINUM);
 
         HaiSet {
             hai,
@@ -170,15 +169,27 @@ impl Iterator for HaiSetGen {
         if self.is_last() {
             return None;
         }
+        lazy_static! {
+            static ref COMBINATION_SOURCE: Vec<Tile> = {
+                let cs = vec![Tile::Red; NR_PER_TILE];
+                cs
+            };
+        }
         // iterate to next
         match self.set.hai.last()? {
             &TILE_LAST_KIND => {
                 // FIXME: performance bottle neck
                 let mut n = self.set.hai.iter()
                                         .rposition(|x| x != &TILE_LAST_KIND)?;
+                if n <= 5 {
+                    eprintln!("{:?}", self.set.hai);
+                }
                 while n < HAINUM
                     && self.set.hai[n] != TILE_LAST_KIND
                 {
+                    if n <= 5 {
+                        eprintln!("n = {}, hai[n] = {:?}", n, self.set.hai[n]);
+                    }
                     self.set.hai[n].next();
                     let t = self.set.hai[n].clone();
                     for c in self.set.hai
@@ -268,7 +279,7 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
     // .into_par_iter()
                                   .filter(|hs| is_valid(hs))
                                   .map(|x| {
-                                      eprintln!("done {:?}", x);
+                                      // eprintln!("done {:?}", x);
                                       x
                                   })
                                   .collect();
@@ -322,8 +333,7 @@ fn is_valid(hai: &HaiSet) -> bool
     assert_eq!(hai.len(), HAINUM);
 
     // first step: check at least one pair exist
-    let mut has_pair: Vec<bool> = Vec::new();
-    has_pair.reserve_exact(HAINUM-1);
+    let mut has_pair: Vec<bool> = Vec::with_capacity(HAINUM-1);
     for i in 0..HAINUM-1 {
         has_pair.push(hai[i] == hai[i+1]);
     }
@@ -332,8 +342,7 @@ fn is_valid(hai: &HaiSet) -> bool
     }
 
     // second step: check sum despite pair is a multiple of 3
-    let mut possible_pairs: Vec<bool> = Vec::new();
-    possible_pairs.reserve_exact(HAINUM-1);
+    let mut possible_pairs: Vec<bool> = Vec::with_capacity(HAINUM-1);
     for i in 0..HAINUM-1 {
         if has_pair[i] {
             possible_pairs.push(((sum - 2 * (hai[i].clone() as i32)) % 3) == 0);
@@ -346,7 +355,7 @@ fn is_valid(hai: &HaiSet) -> bool
     }
 
     // final step: check for triples
-    let mut valid_pairs: Vec<bool> = Vec::new();
+    let mut valid_pairs: Vec<bool> = Vec::with_capacity(HAINUM-1);
     for i in 0..HAINUM-1 {
         if possible_pairs[i] {
             let cphai: Vec<Tile> = hai.iter()
@@ -375,8 +384,7 @@ fn check_hai(hai: &Vec<Tile>) -> bool
         return true;
     }
 
-    let mut used_index: Vec<bool> = Vec::new();
-    used_index.reserve_exact(hai_len);
+    let mut used_index: Vec<bool> = Vec::with_capacity(hai_len);
     for _ in 0..hai_len {
         used_index.push(false);
     }
