@@ -36,16 +36,18 @@ enum Tile {
     Dot6,
 }
 
-impl Iterator for Tile {
-    type Item = Tile;
+impl std::ops::Add<u8> for Tile {
+    type Output = Self;
 
-    fn next(&mut self) -> Option<Tile> {
-        let next = match self {
-            &mut TILE_LAST_KIND => 0,
-            _ => self.clone() as u8 + 1,
-        };
-        *self = Tile::from_u8(next).unwrap();
-        Some(self.clone())
+    fn add(self, other: u8) -> Self {
+        let result = (self as u8 + other) % (TILE_LAST_KIND as u8 + 1);
+        Tile::from_u8(result).unwrap()
+    }
+}
+
+impl std::ops::AddAssign<u8> for Tile {
+    fn add_assign(&mut self, other: u8) {
+        *self = self.clone() + other;
     }
 }
 
@@ -169,12 +171,6 @@ impl Iterator for HaiSetGen {
         if self.is_last() {
             return None;
         }
-        lazy_static! {
-            static ref COMBINATION_SOURCE: Vec<Tile> = {
-                let cs = vec![Tile::Red; NR_PER_TILE];
-                cs
-            };
-        }
         // iterate to next
         match self.set.hai.last()? {
             &TILE_LAST_KIND => {
@@ -190,7 +186,7 @@ impl Iterator for HaiSetGen {
                     if n <= 5 {
                         eprintln!("n = {}, hai[n] = {:?}", n, self.set.hai[n]);
                     }
-                    self.set.hai[n].next();
+                    self.set.hai[n] += 1;
                     let t = self.set.hai[n].clone();
                     for c in self.set.hai
                                      .iter_mut()
@@ -201,7 +197,7 @@ impl Iterator for HaiSetGen {
                     n += NR_PER_TILE;
                 }
             },
-            _ => {self.set.hai[HAINUM-1].next();},
+            _ => {self.set.hai[HAINUM-1] += 1;},
         }
 
         Some(self.set.clone())
@@ -224,10 +220,8 @@ impl<'a> HaiTriplet<'a> {
     }
 
     fn is_chow(&self) -> bool {
-        let mut zero_next = self.s[0].clone();
-        zero_next.next();
-        let mut one_next = self.s[1].clone();
-        one_next.next();
+        let zero_next = self.s[0].clone() + 1;
+        let one_next = self.s[1].clone() + 1;
         if &zero_next == self.s[1]
             && &one_next == self.s[2]
         {
@@ -279,7 +273,7 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet>
     // .into_par_iter()
                                   .filter(|hs| is_valid(hs))
                                   .map(|x| {
-                                      // eprintln!("done {:?}", x);
+                                      eprintln!("done {:?}", x);
                                       x
                                   })
                                   .collect();
