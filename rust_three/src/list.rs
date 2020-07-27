@@ -427,23 +427,11 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
             continue;
         }
 
-        let next_index = match used_index
-            .iter()
-            .enumerate()
-            .skip(i + 1)
-            .find(|&(n, c)| !c && &hai[n] != &hai[i])
-            .map(|(i, _)| i)
-        {
+        let next_index = match next_hai_index(i, &used_index, hai) {
             Some(n) => n,
             None => return false,
         };
-        let last_index = match used_index
-            .iter()
-            .enumerate()
-            .skip(next_index + 1)
-            .find(|&(n, c)| !c && &hai[n] != &hai[next_index])
-            .map(|(i, _)| i)
-        {
+        let last_index = match next_hai_index(next_index, &used_index, hai) {
             Some(n) => n,
             None => return false,
         };
@@ -465,6 +453,19 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
         0 => true,
         _ => false,
     }
+}
+
+fn next_hai_index(
+    previous_index: usize,
+    used_indexes: &[bool; HAINUM - 2],
+    hai: &[&Tile; HAINUM - 2],
+) -> Option<usize> {
+    used_indexes
+        .iter()
+        .enumerate()
+        .skip(previous_index + 1)
+        .find(|&(n, c)| !c && &hai[n] != &hai[previous_index])
+        .map(|(i, _)| i)
 }
 
 #[cfg(test)]
