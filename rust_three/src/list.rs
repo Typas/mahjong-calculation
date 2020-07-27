@@ -10,8 +10,60 @@ use std::time::Instant;
 // };
 
 const HAINUM: usize = 11;
-const NR_PER_TILE: usize = 4;
-const TILE_LAST_KIND: Tile = Tile::Dot6;
+const NR_PER_TILE: usize = 3;
+const TILE_LAST_KIND: Tile = Tile::Dot9;
+
+fn main() -> std::io::Result<()> {
+    let t = Instant::now();
+    let mut mj_stat = MahjongStatistics::new();
+    let record = hailoop(&mut mj_stat)
+        .into_iter()
+        .map(|x| x.into_vec_u8())
+        .flatten()
+        .collect::<Vec<_>>();
+    println!("time used: {} secs", t.elapsed().as_secs_f64());
+
+    println!("total combination: {}", mj_stat.combination_count);
+    println!("total agari combination: {}", mj_stat.valid_count);
+    println!("total pattern: {}", mj_stat.pattern_count);
+    println!("total agari pattern: {}", mj_stat.valid_pattern_count);
+
+    let filename = "patterns_general_three-three-tile.dat";
+    let mut file = File::create(filename)?;
+    file.write(&record)?;
+    println!("time used: {} secs", t.elapsed().as_secs_f64());
+    Ok(())
+}
+
+fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet> {
+    let hsg = HaiSetGen::new();
+    // main problem: how to record "total combination count"?
+    // this should be done in the iteration,
+    // since it's impossible to store 100G+ in the memory
+
+    let records: Vec<HaiSet>
+    // let mut records: Vec<HaiSet>
+        = hsg.into_iter()
+             .map(|x| {
+                 mj_stat.pattern_count += 1;
+                 mj_stat.combination_count += combination(&x).unwrap();
+
+                 x
+             })
+             // .par_bridge()
+             // .into_par_iter()
+             .filter(|hs| is_valid(hs))
+             .collect();
+
+    // records.par_sort();
+
+    records.iter().for_each(|hs| {
+        mj_stat.valid_count += combination(hs).unwrap();
+        mj_stat.valid_pattern_count += 1;
+    });
+
+    records
+}
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, FromPrimitive)]
 enum Tile {
@@ -24,18 +76,27 @@ enum Tile {
     Bamboo4,
     Bamboo5,
     Bamboo6,
+    Bamboo7,
+    Bamboo8,
+    Bamboo9,
     Character1,
     Character2,
     Character3,
     Character4,
     Character5,
     Character6,
+    Character7,
+    Character8,
+    Character9,
     Dot1,
     Dot2,
     Dot3,
     Dot4,
     Dot5,
     Dot6,
+    Dot7,
+    Dot8,
+    Dot9,
 }
 
 impl std::ops::Add<u8> for Tile {
@@ -151,14 +212,14 @@ impl HaiSetGen {
                 Tile::Red,
                 Tile::Red,
                 Tile::Red,
-                Tile::Red,
-                Tile::Green,
                 Tile::Green,
                 Tile::Green,
                 Tile::Green,
                 Tile::White,
                 Tile::White,
-                Tile::Green,
+                Tile::White,
+                Tile::Bamboo1,
+                Tile::White,
             ]),
         }
     }
@@ -171,7 +232,6 @@ impl Iterator for HaiSetGen {
         // iterate to next
         match self.set.hai.last()? {
             &TILE_LAST_KIND => {
-                // FIXME: performance bottle neck
                 // find the `pivot` of new pattern
                 let len = self.set.hai.len();
                 let mut i = len;
@@ -222,14 +282,23 @@ impl<'a> HaiTriplet<'a> {
                 | Tile::Bamboo2
                 | Tile::Bamboo3
                 | Tile::Bamboo4
+                | Tile::Bamboo5
+                | Tile::Bamboo6
+                | Tile::Bamboo7
                 | Tile::Character1
                 | Tile::Character2
                 | Tile::Character3
                 | Tile::Character4
+                | Tile::Character5
+                | Tile::Character6
+                | Tile::Character7
                 | Tile::Dot1
                 | Tile::Dot2
                 | Tile::Dot3
-                | Tile::Dot4 => true,
+                | Tile::Dot4
+                | Tile::Dot5
+                | Tile::Dot6
+                | Tile::Dot7 => true,
                 _ => false,
             }
         } else {
@@ -240,58 +309,6 @@ impl<'a> HaiTriplet<'a> {
     fn is_pung(&self) -> bool {
         self.s[0] == self.s[1] && self.s[1] == self.s[2]
     }
-}
-
-fn main() -> std::io::Result<()> {
-    let t = Instant::now();
-    let mut mj_stat = MahjongStatistics::new();
-    let record = hailoop(&mut mj_stat)
-        .into_iter()
-        .map(|x| x.into_vec_u8())
-        .flatten()
-        .collect::<Vec<_>>();
-    println!("time used: {} secs", t.elapsed().as_secs_f64());
-
-    println!("total combination: {}", mj_stat.combination_count);
-    println!("total agari combination: {}", mj_stat.valid_count);
-    println!("total pattern: {}", mj_stat.pattern_count);
-    println!("total agari pattern: {}", mj_stat.valid_pattern_count);
-
-    let filename = "patterns_general_three.dat";
-    let mut file = File::create(filename)?;
-    file.write(&record)?;
-    println!("time used: {} secs", t.elapsed().as_secs_f64());
-    Ok(())
-}
-
-fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet> {
-    let hsg = HaiSetGen::new();
-    // main problem: how to record "total combination count"?
-    // this should be done in the iteration,
-    // since it's impossible to store 100G+ in the memory
-
-    let records: Vec<HaiSet>
-    // let mut records: Vec<HaiSet>
-        = hsg.into_iter()
-             .map(|x| {
-                 mj_stat.pattern_count += 1;
-                 mj_stat.combination_count += combination(&x).unwrap();
-
-                 x
-             })
-             // .par_bridge()
-             // .into_par_iter()
-             .filter(|hs| is_valid(hs))
-             .collect();
-
-    // records.par_sort();
-
-    records.iter().for_each(|hs| {
-        mj_stat.valid_count += combination(hs).unwrap();
-        mj_stat.valid_pattern_count += 1;
-    });
-
-    records
 }
 
 fn combination(hai: &HaiSet) -> Option<u64> {
@@ -314,7 +331,6 @@ fn combination(hai: &HaiSet) -> Option<u64> {
     for i in 0..ts.len() {
         product *= binom(NR_PER_TILE as u32, ns[i]) as u64;
     }
-
 
     Some(product)
 }
@@ -459,11 +475,11 @@ mod tests {
     fn test_check_hai() {
         let pattern = [
             &Tile::Dot4,
+            &Tile::Dot4,
+            &Tile::Dot4,
             &Tile::Dot5,
             &Tile::Dot5,
             &Tile::Dot5,
-            &Tile::Dot5,
-            &Tile::Dot6,
             &Tile::Dot6,
             &Tile::Dot6,
             &Tile::Dot6,
@@ -474,7 +490,7 @@ mod tests {
             &Tile::Dot3,
             &Tile::Dot3,
             &Tile::Dot4,
-            &Tile::Dot5,
+            &Tile::Dot4,
             &Tile::Dot5,
             &Tile::Dot5,
             &Tile::Dot5,
@@ -519,13 +535,13 @@ mod tests {
                 Tile::Dot5,
                 Tile::Dot5,
                 Tile::Dot5,
-                Tile::Dot5,
                 Tile::Dot6,
                 Tile::Dot6,
                 Tile::Dot6,
-                Tile::Dot6,
+                Tile::Dot7,
+                Tile::Dot7,
             ],
         };
-        assert_eq!(combination(&pattern).unwrap(), 4);
+        assert_eq!(combination(&pattern).unwrap(), 3);
     }
 }
