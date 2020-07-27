@@ -327,10 +327,10 @@ fn combination(hai: &HaiSet) -> Option<u64> {
         }
     }
 
-    let mut product = 1;
-    for i in 0..ts.len() {
-        product *= binom(NR_PER_TILE as u32, ns[i]) as u64;
-    }
+    let product: u64 = ns.iter()
+                         .filter(|&x| *x != 0)
+                         .map(|x| binom(NR_PER_TILE as u32, *x) as u64)
+                         .product();
 
     Some(product)
 }
@@ -455,6 +455,7 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
     }
 }
 
+#[inline(always)]
 fn next_hai_index(
     previous_index: usize,
     used_indexes: &[bool; HAINUM - 2],
