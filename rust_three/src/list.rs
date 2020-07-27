@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
     println!("total pattern: {}", mj_stat.pattern_count);
     println!("total agari pattern: {}", mj_stat.valid_pattern_count);
 
-    let filename = "patterns_general_three-three-tile.dat";
+    let filename = "patterns_general_three-three-tile-copy-trait.dat";
     let mut file = File::create(filename)?;
     file.write(&record)?;
     println!("time used: {} secs", t.elapsed().as_secs_f64());
@@ -65,7 +65,7 @@ fn hailoop(mj_stat: &mut MahjongStatistics) -> Vec<HaiSet> {
     records
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, FromPrimitive)]
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, FromPrimitive)]
 enum Tile {
     Red,
     Green,
@@ -111,7 +111,7 @@ impl std::ops::Add<u8> for Tile {
 
 impl std::ops::AddAssign<u8> for Tile {
     fn add_assign(&mut self, rhs: u8) {
-        *self = self.clone() + rhs;
+        *self = *self + rhs;
     }
 }
 
@@ -131,7 +131,7 @@ impl std::ops::Sub<u8> for Tile {
 
 impl std::ops::SubAssign<u8> for Tile {
     fn sub_assign(&mut self, rhs: u8) {
-        *self = self.clone() - rhs;
+        *self = *self - rhs;
     }
 }
 
@@ -153,7 +153,7 @@ impl MahjongStatistics {
     }
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 struct HaiSet {
     hai: [Tile; HAINUM],
 }
@@ -164,12 +164,12 @@ impl HaiSet {
     }
 
     fn into_vec_u8(self) -> Vec<u8> {
-        self.hai.iter().map(|x| x.clone() as u8 + b'A').collect()
+        self.hai.iter().map(|x| *x as u8 + b'A').collect()
     }
 
     fn iter<'a>(&'a self) -> HaiSetIterator<impl Iterator<Item = Tile> + 'a> {
         HaiSetIterator {
-            haisetiter: self.hai.iter().cloned(),
+            haisetiter: self.hai.iter().copied(),
         }
     }
 
@@ -238,7 +238,7 @@ impl Iterator for HaiSetGen {
                 let pivot = loop {
                     i -= 1;
                     let r = len - i - 1;
-                    let target = self.set.hai[i].clone() + (r / NR_PER_TILE) as u8;
+                    let target = self.set.hai[i] + (r / NR_PER_TILE) as u8;
                     match (target, i) {
                         (TILE_LAST_KIND, 0) => return None,
                         (TILE_LAST_KIND, _) => (),
@@ -246,9 +246,9 @@ impl Iterator for HaiSetGen {
                     }
                 };
 
-                let hai_pivot = self.set.hai[pivot].clone() + 1;
+                let hai_pivot = self.set.hai[pivot] + 1;
                 for i in pivot..len {
-                    self.set.hai[i] = hai_pivot.clone() + ((i - pivot) / NR_PER_TILE) as u8;
+                    self.set.hai[i] = hai_pivot + ((i - pivot) / NR_PER_TILE) as u8;
                 }
             }
             _ => {
@@ -256,7 +256,7 @@ impl Iterator for HaiSetGen {
             }
         }
 
-        Some(self.set.clone())
+        Some(self.set)
     }
 }
 
@@ -273,8 +273,8 @@ impl<'a> HaiTriplet<'a> {
     }
 
     fn is_chow(&self) -> bool {
-        let zero_next = self.s[0].clone() + 1;
-        let one_next = self.s[1].clone() + 1;
+        let zero_next = *self.s[0] + 1;
+        let one_next = *self.s[1] + 1;
         if &zero_next == self.s[1] && &one_next == self.s[2] {
             // FIXME: find a better match pattern approach
             match self.s[0] {
@@ -347,7 +347,7 @@ fn binom(n: u32, k: u32) -> u32 {
 }
 
 fn is_valid(hai: &HaiSet) -> bool {
-    let sum: i32 = hai.iter().map(|x| x.clone() as i32).sum();
+    let sum: i32 = hai.iter().map(|x| x as i32).sum();
     assert_eq!(hai.len(), HAINUM);
 
     // first step: check at least one pair exist
@@ -361,7 +361,7 @@ fn is_valid(hai: &HaiSet) -> bool {
     let mut possible_pairs = [false; HAINUM - 1];
     (0..HAINUM - 1).for_each(|i| {
         if has_pair[i] {
-            possible_pairs[i] = ((sum - 2 * (hai[i].clone() as i32)) % 3) == 0;
+            possible_pairs[i] = ((sum - 2 * (hai[i] as i32)) % 3) == 0;
         }
     });
     if possible_pairs.iter().filter(|&&x| x).count() == 0 {
