@@ -327,10 +327,11 @@ fn combination(hai: &HaiSet) -> Option<u64> {
         }
     }
 
-    let product: u64 = ns.iter()
-                         .filter(|&x| *x != 0)
-                         .map(|x| binom(NR_PER_TILE as u32, *x) as u64)
-                         .product();
+    let product: u64 = ns
+        .iter()
+        .filter(|&&x| x != 0)
+        .map(|&x| binom(NR_PER_TILE as u32, x) as u64)
+        .product();
 
     Some(product)
 }
@@ -382,7 +383,7 @@ fn is_valid(hai: &HaiSet) -> bool {
             let mut cphai = [&Tile::Red; HAINUM - 2];
             (0..HAINUM)
                 .into_iter()
-                .filter(|j| (j != &i) && (*j != i + 1))
+                .filter(|&j| (j != i) && (j != i + 1))
                 .enumerate()
                 .for_each(|(k, j)| cphai[k] = &hai[j]);
             valid_pairs[i] = check_hai(&cphai);
@@ -408,30 +409,30 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
         return true;
     }
 
-    let mut used_index = [false; CHECK_LEN];
+    let mut used_indexes = [false; CHECK_LEN];
     let mut i = 0;
     while i < CHECK_LEN {
-        if used_index[i] {
+        if used_indexes[i] {
             i += 1;
             continue;
         }
 
         let triplet = HaiTriplet::new(&hai[i], &hai[i + 1], &hai[i + 2]);
-        if (triplet.is_chow() || triplet.is_pung()) && !(used_index[i + 1]) && !(used_index[i + 2])
+        if (triplet.is_chow() || triplet.is_pung()) && !(used_indexes[i + 1]) && !(used_indexes[i + 2])
         {
             // FIXME: find a way to assign in one line
-            used_index[i] = true;
-            used_index[i + 1] = true;
-            used_index[i + 2] = true;
+            used_indexes[i] = true;
+            used_indexes[i + 1] = true;
+            used_indexes[i + 2] = true;
             i += 3;
             continue;
         }
 
-        let next_index = match next_hai_index(i, &used_index, hai) {
+        let next_index = match next_hai_index(i, &used_indexes, hai) {
             Some(n) => n,
             None => return false,
         };
-        let last_index = match next_hai_index(next_index, &used_index, hai) {
+        let last_index = match next_hai_index(next_index, &used_indexes, hai) {
             Some(n) => n,
             None => return false,
         };
@@ -439,9 +440,9 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
         let sparse_triplet = HaiTriplet::new(&hai[i], &hai[next_index], &hai[last_index]);
         if sparse_triplet.is_chow() {
             // FIXME: find a way to assign in one line
-            used_index[i] = true;
-            used_index[next_index] = true;
-            used_index[last_index] = true;
+            used_indexes[i] = true;
+            used_indexes[next_index] = true;
+            used_indexes[last_index] = true;
             i += 1;
             continue;
         } else {
@@ -449,7 +450,7 @@ fn check_hai(hai: &[&Tile; HAINUM - 2]) -> bool {
         }
     }
 
-    match used_index.iter().filter(|&&x| x == false).count() {
+    match used_indexes.iter().filter(|&&x| x == false).count() {
         0 => true,
         _ => false,
     }
