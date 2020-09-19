@@ -20,6 +20,8 @@ typedef enum Tile{
 Red,
 Green,
 White,
+Sun,
+Moon,
 B1,
 B2,
 B3,
