@@ -1,0 +1,21 @@
+[package]
+name = "rust_four"
+version = "0.1.0"
+authors = ["Typas Liao <typascake@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "list"
+path = "src/list.rs"
+
+[[bin]]
+name = "agari"
+path = "src/agari.rs"
+
+[dependencies]
+bitvec = "1"
+arrayvec = "0.7"
+rayon = "1.5"
+itertools = "0.10"
