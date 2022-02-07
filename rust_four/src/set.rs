@@ -157,6 +157,7 @@ pub struct Set {
 impl Set {
     pub fn hands(&self) -> HandList {
         let mut checker = HandList::new();
+        // all_chow_pung must be first
         self.all_chow_pung(&mut checker);
         self.score_pungs(&mut checker);
         self.honors(&mut checker);
@@ -578,7 +579,7 @@ impl Set {
             tmp.sort();
             let tmp: ArrayVec<Tile, 4> = tmp
                 .into_iter()
-                .map(|t| Tile::try_from(t as char).unwrap())
+                .map(|t| Tile::try_from((t + b'A') as char).unwrap())
                 .collect();
             if tmp.windows(2).all(|w| w[0].is_ascending(w[1])) {
                 checker.set(Hand::FourPureShiftedPungs as usize, true);

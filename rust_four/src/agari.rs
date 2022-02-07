@@ -1,10 +1,11 @@
 use arrayvec::ArrayVec;
 use itertools::Itertools;
+use rayon::prelude::*;
 use set::{HandList, Set, SetBuilder, HAINUM};
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{collections::HashMap, fs::File, io::Read, sync::Mutex, time::Instant};
 
 use crate::{
-    hand::Hand,
+    hand::{Hand, HANDVARIANT},
     set::{Meld, MeldKind},
     tile::{Tile, TILEVARIANT},
 };
@@ -13,33 +14,72 @@ mod set;
 mod tile;
 
 fn main() -> std::io::Result<()> {
-    let mut hands: HashMap<HandList, u64> = HashMap::new();
+    // let mut hands: HashMap<HandList, u64> = HashMap::new();
+    let hands: Mutex<HashMap<HandList, u64>> = Mutex::new(HashMap::new());
     let mut reader = File::open("patterns_general_four.dat")?;
-    let mut raw_hai = [0u8; HAINUM];
-    while let Ok(_) = reader.read_exact(&mut raw_hai) {
-        let sets = allsets(&raw_hai);
-        let combinations = comb(&raw_hai);
-        for s in sets.into_iter() {
-            let list = s.hands();
-            if hands.contains_key(&list) {
-                if let Some(v) = hands.get_mut(&list) {
-                    *v += combinations;
-                }
-            } else {
-                hands.insert(list, combinations);
-            }
-        }
-    }
+    // let mut raw_hai = [0u8; HAINUM];
+    let fsize = reader.metadata()?.len() as usize;
+    let mut buffer = Vec::with_capacity(fsize);
+    let time_read = Instant::now();
+    let size_read = reader.read_to_end(&mut buffer)?;
+    assert_eq!(size_read, fsize);
+    let raw_hai_sets: Vec<Vec<u8>> = buffer
+        .into_iter()
+        .chunks(HAINUM)
+        .into_iter()
+        .map(|c| c.collect())
+        .collect();
+    assert_eq!(raw_hai_sets.len(), fsize / HAINUM);
+    println!(
+        "time read and chunks in {} ms",
+        time_read.elapsed().as_millis()
+    );
 
+    println!("produce hand patterns");
+    let start = Instant::now();
+    // while let Ok(_) = reader.read_exact(&mut raw_hai) {
+    raw_hai_sets
+        .into_iter()
+        .enumerate()
+        .for_each(|(i, raw_hai)| {
+            let sets = allsets(&raw_hai);
+            let combinations = comb(&raw_hai);
+            // for s in sets.into_iter() {
+            sets.into_par_iter().for_each(|s| {
+                let list = s.hands();
+                let mut h = hands.lock().unwrap();
+                if h.contains_key(&list) {
+                    if let Some(v) = h.get_mut(&list) {
+                        *v += combinations;
+                    }
+                } else {
+                    h.insert(list, combinations);
+                }
+            });
+
+            if i % 11500 == 0 {
+                println!(
+                    "progressed: {:4.1} %, time used: {} ms",
+                    (14.0 * i as f64 / fsize as f64 * 100.0),
+                    start.elapsed().as_millis(),
+                );
+            }
+        });
+    let hands = hands.into_inner().unwrap();
+
+    println!("calculate combinations and total scores");
     // 役種、組合數、總分
-    let mut result: Vec<(Hand, u64, u64)> = vec![(Hand::try_from(0).unwrap(), 0, 0)];
+    let mut result: Vec<(Hand, u64, u64)> = vec![(Hand::try_from(0).unwrap(), 0, 0); HANDVARIANT];
     result
         .iter_mut()
         .enumerate()
         .for_each(|(i, (h, _, _))| *h = Hand::try_from(i).unwrap());
+    let result: Mutex<Vec<_>> = Mutex::new(result);
 
-    for (handlist, combination) in hands.into_iter() {
+    // for (handlist, combination) in hands.into_iter() {
+    hands.into_par_iter().for_each(|(handlist, combination)| {
         let score = handlist.score() as u64;
+        let mut result = result.lock().unwrap();
         handlist
             .into_iter()
             .enumerate()
@@ -48,7 +88,8 @@ fn main() -> std::io::Result<()> {
                 result[i].1 += combination;
                 result[i].2 += combination * score;
             });
-    }
+    });
+    let mut result = result.into_inner().unwrap();
 
     // 役牌特殊處理
     result[4].1 += result[1].1;
@@ -57,6 +98,9 @@ fn main() -> std::io::Result<()> {
     result[4].2 += result[2].2;
     result[4].1 += result[3].1;
     result[4].2 += result[3].2;
+
+    println!("end of process");
+    println!("");
 
     println!("役種\t組合數\t平均分數");
     for (hand, combination, score) in result.into_iter() {
@@ -71,8 +115,9 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn allsets(raw: &[u8; HAINUM]) -> Vec<Set> {
-    let mut sorted_raw = raw.clone();
+fn allsets(raw: &[u8]) -> Vec<Set> {
+    assert_eq!(raw.len(), HAINUM);
+    let mut sorted_raw = raw.to_vec();
     sorted_raw.sort();
     let tiles: ArrayVec<Tile, HAINUM> = sorted_raw
         .into_iter()
@@ -106,7 +151,8 @@ fn allsets(raw: &[u8; HAINUM]) -> Vec<Set> {
     result.into_iter().unique().collect()
 }
 
-fn comb(raw: &[u8; HAINUM]) -> u64 {
+fn comb(raw: &[u8]) -> u64 {
+    assert_eq!(raw.len(), HAINUM);
     let mut counts = [0u64; TILEVARIANT];
 
     raw.iter()
