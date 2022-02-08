@@ -23,6 +23,7 @@ impl HandList {
         let s: u16 = self
             .iter()
             .enumerate()
+            .take(HANDVARIANT)
             .map(|(i, b)| Hand::try_from(i).unwrap().score() * *b as u16)
             .sum();
 
@@ -607,5 +608,27 @@ impl Set {
         };
 
         comb3_fn!(self, is_shifted_pungs, checker, Hand::PureShiftedPungs);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn handlist_score() {
+        let hl = HandList::new();
+        assert_eq!(hl.score(), 0);
+    }
+
+    #[test]
+    fn handlist_pattern_score() {
+        let mut hl = HandList::new();
+        hl.set(Hand::AllChows as usize, true);
+        hl.set(Hand::HalfFlush as usize, true);
+        hl.set(Hand::TwicePureDoubleChow as usize, true);
+        hl.set(Hand::OutsideHands as usize, true);
+
+        assert_eq!(hl.score(), 16);
     }
 }
