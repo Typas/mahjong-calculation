@@ -1,8 +1,7 @@
 use arrayvec::ArrayVec;
 use itertools::Itertools;
-use rayon::prelude::*;
 use set::{HandList, Set, SetBuilder, HAINUM};
-use std::{collections::HashMap, fs::File, io::Read, sync::Mutex, time::Instant};
+use std::{collections::HashMap, fs::File, io::Read, time::Instant};
 
 use crate::{
     hand::{Hand, HANDVARIANT},
@@ -36,91 +35,113 @@ fn main() -> std::io::Result<()> {
     println!("produce hand patterns");
     let start = Instant::now();
     // let mut processed = 0u64;
-    let processed = Mutex::new(0);
-    // let mut hands: HashMap<HandList, u64> = HashMap::new();
-    let hands: Mutex<HashMap<HandList, u64>> = Mutex::new(HashMap::new());
+    // let processed = Mutex::new(0);
+    let mut hands: HashMap<HandList, (u64, u64)> = HashMap::new();
+    // let hands: Mutex<HashMap<HandList, (u64, u64)>> = Mutex::new(HashMap::new());
     raw_hai_sets
-        // .into_iter()
-        .into_par_iter()
+        .into_iter()
+        // .into_par_iter()
         .enumerate()
         .for_each(|(_, raw_hai)| {
             let sets = allsets(&raw_hai);
             let combinations = comb(&raw_hai);
-            // sets.into_iter().for_each(|s| {
-            sets.into_par_iter().for_each(|s| {
+            sets.into_iter().for_each(|s| {
+                // sets.into_par_iter().for_each(|s| {
                 let list = s.hands();
-                // let h = &mut hands;
-                let mut h = hands.lock().unwrap();
+                let h = &mut hands;
+                // let mut h = hands.lock().unwrap();
                 if h.contains_key(&list) {
                     if let Some(v) = h.get_mut(&list) {
-                        *v += combinations;
+                        v.0 += 1;
+                        v.1 += combinations;
                     }
                 } else {
-                    h.insert(list, combinations);
+                    h.insert(list, (1, combinations));
                 }
             });
 
             // let processed = &mut processed;
-            let mut processed = processed.lock().unwrap();
-            *processed += 1;
-            if *processed % 11500 == 0 {
-                println!(
-                    "progressed: {:4.1} %, time used: {:.2} s",
-                    (14.0 * *processed as f64 / fsize as f64 * 100.0),
-                    start.elapsed().as_secs_f32(),
-                );
-            }
+            // // let mut processed = processed.lock().unwrap();
+            // *processed += 1;
+            // if *processed % 115000 == 0 {
+            //     println!(
+            //         "progressed: {} %, time used: {:.2} s",
+            //         (14 * 100 * *processed / fsize as u64),
+            //         start.elapsed().as_secs_f32(),
+            //     );
+            // }
         });
-    let hands = hands.into_inner().unwrap();
+    // let hands = hands.into_inner().unwrap();
+    println!(
+        "time produce patterns in {:.2} s",
+        start.elapsed().as_secs_f32()
+    );
 
     println!("calculate combinations and total scores");
-    // 役種、組合數、總分
-    let mut result: Vec<(Hand, u64, u64)> = vec![(Hand::try_from(0).unwrap(), 0, 0); HANDVARIANT];
+    // 役種、和牌形、組合數、總分
+    let mut result: Vec<(Hand, u64, u64, u64)> =
+        vec![(Hand::try_from(0).unwrap(), 0, 0, 0); HANDVARIANT];
     result
         .iter_mut()
         .enumerate()
-        .for_each(|(i, (h, _, _))| *h = Hand::try_from(i).unwrap());
+        .for_each(|(i, (h, _, _, _))| *h = Hand::try_from(i).unwrap());
     // let result: Mutex<Vec<_>> = Mutex::new(result);
 
-    hands.into_iter().for_each(|(handlist, combination)| {
-        // hands.into_par_iter().for_each(|(handlist, combination)| {
-        let score = handlist.score() as u64;
-        // let mut result = result.lock().unwrap();
-        handlist
-            .into_iter()
-            .enumerate()
-            .filter(|(_, h)| *h)
-            .for_each(|(i, _)| {
-                result[i].1 += combination;
-                result[i].2 += combination * score;
-            });
-    });
+    hands
+        .into_iter()
+        .for_each(|(handlist, (pattern, combination))| {
+            // hands.into_par_iter().for_each(|(handlist, combination)| {
+            let score = handlist.score() as u64;
+            // let mut result = result.lock().unwrap();
+            handlist
+                .into_iter()
+                .enumerate()
+                .filter(|(_, h)| *h)
+                .for_each(|(i, _)| {
+                    result[i].1 += pattern;
+                    result[i].2 += combination;
+                    result[i].3 += combination * score;
+                });
+        });
     // let mut result = result.into_inner().unwrap();
 
     // 役牌特殊處理
     result[4].1 += result[1].1;
     result[4].2 += result[1].2;
+    result[4].3 += result[1].3;
     result[4].1 += result[2].1;
     result[4].2 += result[2].2;
+    result[4].3 += result[2].3;
     result[4].1 += result[3].1;
     result[4].2 += result[3].2;
+    result[4].3 += result[3].3;
 
     println!("end of process");
     println!("");
 
-    println!("役種\t組合數\t平均分數");
-    for (hand, combination, score) in result.into_iter() {
-        println!(
-            "{}\t{}\t{}",
-            hand.name(),
-            combination,
-            score as f64 / combination as f64
-        );
-    }
+    println!("{:4}{:8}{:13}{:4}", "役種", "和牌形", "組合數", "平均分數");
+    result
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, r)| match i {
+            1 | 2 | 3 => None,
+            _ => Some(r),
+        })
+        .for_each(|(hand, pattern, combination, score)| {
+            println!(
+                "{:<4}{:>8}{:>16} {:>.*}",
+                hand.name(),
+                pattern,
+                combination,
+                5,
+                (score as f64 / combination as f64).to_string()
+            );
+        });
 
     Ok(())
 }
 
+// main performance problem
 fn allsets(raw: &[u8]) -> Vec<Set> {
     assert_eq!(raw.len(), HAINUM);
     let mut sorted_raw = raw.to_vec();
@@ -249,36 +270,61 @@ fn get_pairs(set: &[Tile]) -> Vec<(SetBuilder, ArrayVec<Tile, FOURSET>)> {
 fn get_first_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Tile, THREESET>)> {
     assert_eq!(set.len(), FOURSET);
     let mut result = Vec::new();
-    for m in set.to_owned().into_iter().combinations(ONESET).unique() {
-        let chow = is_chow(&m);
-        let pung = is_pung(&m);
-        if chow || pung {
-            let new_meld = match (chow, pung) {
-                (true, false) => Meld::new(m[0], MeldKind::ConcealedChow),
-                (false, true) => Meld::new(m[0], MeldKind::ConcealedPung),
-                _ => unreachable!(),
-            };
+    // combinations and unique takes too long time
+    // TODO: rewrite without combinations and unique
+
+    // assume set is sorted
+    // pung is always continuous (0, 1, 2)
+    // chow is possible in various way, get only (0, x, y) where x + y min
+    // FIXME: prove only "first" chow is needed
+    let pung_set = [set[0], set[1], set[2]];
+    let chow_indexes = [
+        [0, 1, 2],
+        [0, 1, 3],
+        [0, 1, 4],
+        [0, 1, 5],
+        [0, 2, 4],
+        [0, 2, 5],
+        [0, 2, 6],
+        [0, 3, 6],
+        [0, 3, 7],
+        [0, 4, 8],
+    ];
+
+    if is_pung(&pung_set) {
+        let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
+        let mut new_sb = sb.clone();
+        let meld_pos = [0, 1, 2];
+        new_sb.add_meld(new_meld).unwrap();
+        let remains: ArrayVec<Tile, THREESET> = set
+            .to_owned()
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| !meld_pos.contains(i))
+            .map(|(_, t)| t)
+            .collect();
+        assert_eq!(remains.len(), THREESET);
+
+        result.push((new_sb, remains));
+    }
+
+    for idx in chow_indexes.into_iter() {
+        let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
+        if is_chow(&chow_set) {
+            let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
             let mut new_sb = sb.clone();
             new_sb.add_meld(new_meld).unwrap();
-            let mut meld_pos: ArrayVec<usize, ONESET> = m
-                .iter()
-                .map(|m| set.iter().position(|t| t == m).unwrap())
-                .collect();
-            if meld_pos[0] == meld_pos[1] {
-                meld_pos[1] = meld_pos[0] + 1;
-                meld_pos[2] = meld_pos[0] + 2;
-            }
-            assert_eq!(meld_pos.len(), ONESET);
             let remains: ArrayVec<Tile, THREESET> = set
                 .to_owned()
                 .into_iter()
                 .enumerate()
-                .filter(|(i, _)| !meld_pos.contains(i))
+                .filter(|(i, _)| !idx.contains(i))
                 .map(|(_, t)| t)
                 .collect();
             assert_eq!(remains.len(), THREESET);
 
             result.push((new_sb, remains));
+            break;
         }
     }
 
@@ -288,36 +334,55 @@ fn get_first_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
 fn get_second_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Tile, TWOSET>)> {
     assert_eq!(set.len(), THREESET);
     let mut result = Vec::new();
-    for m in set.to_owned().into_iter().combinations(ONESET).unique() {
-        let chow = is_chow(&m);
-        let pung = is_pung(&m);
-        if chow || pung {
-            let new_meld = match (chow, pung) {
-                (true, false) => Meld::new(m[0], MeldKind::ConcealedChow),
-                (false, true) => Meld::new(m[0], MeldKind::ConcealedPung),
-                _ => unreachable!(),
-            };
+    // TODO: rewrite without combinations and unique
+    // assume set is sorted
+    // pung is always continuous (0, 1, 2)
+    // chow is possible in various way, get only (0, x, y) where x + y min
+    // FIXME: prove only "first" chow is needed
+    let pung_set = [set[0], set[1], set[2]];
+    let chow_indexes = [
+        [0, 1, 2],
+        [0, 1, 3],
+        [0, 1, 4],
+        [0, 2, 4],
+        [0, 2, 5],
+        [0, 3, 6],
+    ];
+
+    if is_pung(&pung_set) {
+        let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
+        let mut new_sb = sb.clone();
+        let meld_pos = [0, 1, 2];
+        new_sb.add_meld(new_meld).unwrap();
+        let remains: ArrayVec<Tile, TWOSET> = set
+            .to_owned()
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| !meld_pos.contains(i))
+            .map(|(_, t)| t)
+            .collect();
+        assert_eq!(remains.len(), TWOSET);
+
+        result.push((new_sb, remains));
+    }
+
+    for idx in chow_indexes.into_iter() {
+        let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
+        if is_chow(&chow_set) {
+            let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
             let mut new_sb = sb.clone();
             new_sb.add_meld(new_meld).unwrap();
-            let mut meld_pos: ArrayVec<usize, ONESET> = m
-                .iter()
-                .map(|m| set.iter().position(|t| t == m).unwrap())
-                .collect();
-            if meld_pos[0] == meld_pos[1] {
-                meld_pos[1] = meld_pos[0] + 1;
-                meld_pos[2] = meld_pos[0] + 2;
-            }
-            assert_eq!(meld_pos.len(), ONESET);
             let remains: ArrayVec<Tile, TWOSET> = set
                 .to_owned()
                 .into_iter()
                 .enumerate()
-                .filter(|(i, _)| !meld_pos.contains(i))
+                .filter(|(i, _)| !idx.contains(i))
                 .map(|(_, t)| t)
                 .collect();
             assert_eq!(remains.len(), TWOSET);
 
             result.push((new_sb, remains));
+            break;
         }
     }
 
@@ -327,36 +392,48 @@ fn get_second_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<T
 fn get_third_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Tile, ONESET>)> {
     assert_eq!(set.len(), TWOSET);
     let mut result = Vec::new();
-    for m in set.to_owned().into_iter().combinations(ONESET).unique() {
-        let chow = is_chow(&m);
-        let pung = is_pung(&m);
-        if chow || pung {
-            let new_meld = match (chow, pung) {
-                (true, false) => Meld::new(m[0], MeldKind::ConcealedChow),
-                (false, true) => Meld::new(m[0], MeldKind::ConcealedPung),
-                _ => unreachable!(),
-            };
+    // TODO: rewrite without combinations and unique
+    // assume set is sorted
+    // pung is always continuous (0, 1, 2)
+    // chow is possible in various way, get only (0, x, y) where x + y min
+    // FIXME: prove only "first" chow is needed
+    let pung_set = [set[0], set[1], set[2]];
+    let chow_indexes = [[0, 1, 2], [0, 1, 3], [0, 2, 4]];
+
+    if is_pung(&pung_set) {
+        let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
+        let mut new_sb = sb.clone();
+        let meld_pos = [0, 1, 2];
+        new_sb.add_meld(new_meld).unwrap();
+        let remains: ArrayVec<Tile, ONESET> = set
+            .to_owned()
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| !meld_pos.contains(i))
+            .map(|(_, t)| t)
+            .collect();
+        assert_eq!(remains.len(), ONESET);
+
+        result.push((new_sb, remains));
+    }
+
+    for idx in chow_indexes.into_iter() {
+        let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
+        if is_chow(&chow_set) {
+            let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
             let mut new_sb = sb.clone();
             new_sb.add_meld(new_meld).unwrap();
-            let mut meld_pos: ArrayVec<usize, ONESET> = m
-                .iter()
-                .map(|m| set.iter().position(|t| t == m).unwrap())
-                .collect();
-            if meld_pos[0] == meld_pos[1] {
-                meld_pos[1] = meld_pos[0] + 1;
-                meld_pos[2] = meld_pos[0] + 2;
-            }
-            assert_eq!(meld_pos.len(), ONESET);
             let remains: ArrayVec<Tile, ONESET> = set
                 .to_owned()
                 .into_iter()
                 .enumerate()
-                .filter(|(i, _)| !meld_pos.contains(i))
+                .filter(|(i, _)| !idx.contains(i))
                 .map(|(_, t)| t)
                 .collect();
             assert_eq!(remains.len(), ONESET);
 
             result.push((new_sb, remains));
+            break;
         }
     }
 
@@ -378,5 +455,19 @@ fn get_last_melds(set: &[Tile], mut sb: SetBuilder) -> Option<Set> {
             sb.build().ok()
         }
         false => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn comb_all_pungs() {
+        let raw = [
+            b'A', b'A', b'B', b'B', b'B', b'C', b'C', b'C', b'D', b'D', b'D', b'E', b'E', b'E',
+        ];
+
+        assert_eq!(comb(&raw), 6 * 4 * 4 * 4 * 4);
     }
 }

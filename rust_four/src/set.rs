@@ -50,7 +50,7 @@ impl std::ops::DerefMut for HandList {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum MeldKind {
     RevealedChow,  // 明順
     RevealedPung,  // 明刻
@@ -93,7 +93,7 @@ impl MeldKind {
 }
 
 // 面子
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Meld {
     head: Tile,
     kind: MeldKind,
@@ -148,7 +148,7 @@ impl SetBuilder {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Set {
     pair: Tile,
     melds: ArrayVec<Meld, SETNUM>,
@@ -167,6 +167,10 @@ impl Set {
         self.conceal_pungs(&mut checker);
         self.same_chows(&mut checker);
         self.shift_pungs(&mut checker);
+
+        if checker.any() == false {
+            checker.set(Hand::NoPoint as usize, true);
+        }
 
         checker
     }
