@@ -168,6 +168,30 @@ impl Set {
         self.same_chows(&mut checker);
         self.shift_pungs(&mut checker);
 
+        match (
+            checker[Hand::AllHonors as usize],
+            checker[Hand::BigFourWinds as usize],
+            checker[Hand::AllTerminals as usize],
+            checker[Hand::QuadrupleChow as usize],
+        ) {
+            (false, false, false, false) => (),
+            _ => {
+                checker
+                    .iter_mut()
+                    .enumerate()
+                    .filter_map(|(i, c)| match i {
+                        i if i == Hand::AllHonors as usize
+                            || i == Hand::BigFourWinds as usize
+                            || i == Hand::AllTerminals as usize
+                            || i == Hand::QuadrupleChow as usize =>
+                        {
+                            None
+                        }
+                        _ => Some(c),
+                    })
+                    .for_each(|mut c| c.set(false));
+            }
+        }
         if checker.any() == false {
             checker.set(Hand::NoPoint as usize, true);
         }

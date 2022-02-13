@@ -1,5 +1,5 @@
 pub const HANDVARIANT: usize = 31;
-pub const HANDMAXSCORE: u16 = 16;
+pub const HANDMAXSCORE: u16 = 32;
 
 #[derive(Clone, Copy)]
 pub enum Hand {
@@ -47,24 +47,24 @@ impl Hand {
             &Self::PureStraight => 4,
             &Self::AllPungs => 4,
             &Self::LittleThreeDragons => 6,
-            &Self::BigThreeDragons => 12,
-            &Self::LittleFourWinds => 12,
+            &Self::BigThreeDragons => 8,
+            &Self::LittleFourWinds => 16,
             &Self::AllSimples => 1,
             &Self::OutsideHands => 4,
             &Self::TerminalsInAllSets => 6,
             &Self::AllTerminalsAndHonors => 12,
-            &Self::HalfFlush => 6,
+            &Self::HalfFlush => 4,
             &Self::FullFlush => 8,
-            &Self::AllHonors => 16,
+            &Self::AllHonors => HANDMAXSCORE,
             &Self::TwoConcealedPungs => 1,
             &Self::ThreeConcealedPungs => 3,
-            &Self::FourConcealedPungs => 6,
+            &Self::FourConcealedPungs => 4,
             &Self::PureDoubleChow => 1,
-            &Self::TwicePureDoubleChow => 6,
+            &Self::TwicePureDoubleChow => 8,
             &Self::PureTripleChow => 12,
             &Self::MixedTripleChow => 3,
             &Self::TriplePung => 12,
-            &Self::PureShiftedPungs => 8,
+            &Self::PureShiftedPungs => 4,
             &Self::FourPureShiftedPungs => 16,
             // 絕對滿貫
             &Self::BigFourWinds => HANDMAXSCORE,

@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
     let time_read = Instant::now();
     let size_read = reader.read_to_end(&mut buffer)?;
     assert_eq!(size_read, fsize);
-    let raw_hai_sets: Vec<Vec<u8>> = buffer
+    let raw_hai_sets: Vec<ArrayVec<u8, HAINUM>> = buffer
         .into_iter()
         .chunks(HAINUM)
         .into_iter()
@@ -34,22 +34,16 @@ fn main() -> std::io::Result<()> {
 
     println!("produce hand patterns");
     let start = Instant::now();
-    // let mut processed = 0u64;
-    // let processed = Mutex::new(0);
     let mut hands: HashMap<HandList, (u64, u64)> = HashMap::new();
-    // let hands: Mutex<HashMap<HandList, (u64, u64)>> = Mutex::new(HashMap::new());
     raw_hai_sets
         .into_iter()
-        // .into_par_iter()
         .enumerate()
         .for_each(|(_, raw_hai)| {
             let sets = allsets(&raw_hai);
             let combinations = comb(&raw_hai);
             sets.into_iter().for_each(|s| {
-                // sets.into_par_iter().for_each(|s| {
                 let list = s.hands();
                 let h = &mut hands;
-                // let mut h = hands.lock().unwrap();
                 if h.contains_key(&list) {
                     if let Some(v) = h.get_mut(&list) {
                         v.0 += 1;
@@ -59,19 +53,8 @@ fn main() -> std::io::Result<()> {
                     h.insert(list, (1, combinations));
                 }
             });
-
-            // let processed = &mut processed;
-            // // let mut processed = processed.lock().unwrap();
-            // *processed += 1;
-            // if *processed % 115000 == 0 {
-            //     println!(
-            //         "progressed: {} %, time used: {:.2} s",
-            //         (14 * 100 * *processed / fsize as u64),
-            //         start.elapsed().as_secs_f32(),
-            //     );
-            // }
         });
-    // let hands = hands.into_inner().unwrap();
+
     println!(
         "time produce patterns in {:.2} s",
         start.elapsed().as_secs_f32()
@@ -85,14 +68,11 @@ fn main() -> std::io::Result<()> {
         .iter_mut()
         .enumerate()
         .for_each(|(i, (h, _, _, _))| *h = Hand::try_from(i).unwrap());
-    // let result: Mutex<Vec<_>> = Mutex::new(result);
 
     hands
         .into_iter()
         .for_each(|(handlist, (pattern, combination))| {
-            // hands.into_par_iter().for_each(|(handlist, combination)| {
             let score = handlist.score() as u64;
-            // let mut result = result.lock().unwrap();
             handlist
                 .into_iter()
                 .enumerate()
@@ -103,7 +83,6 @@ fn main() -> std::io::Result<()> {
                     result[i].3 += combination * score;
                 });
         });
-    // let mut result = result.into_inner().unwrap();
 
     // 役牌特殊處理
     result[4].1 += result[1].1;
