@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 pub const TILEVARIANT: usize = 34;
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tile {
     // 字牌, Honor
@@ -44,6 +45,7 @@ pub enum Tile {
     D9,
 }
 
+#[allow(dead_code)]
 impl Tile {
     pub fn is_same_color(&self, t: Tile) -> bool {
         self.color() == t.color()
@@ -102,7 +104,6 @@ impl Tile {
         }
     }
 
-    #[allow(dead_code)]
     pub fn is_neighbor(&self, t: Tile) -> bool {
         self.is_ascending(t) || self.is_descending(t)
     }
@@ -213,6 +214,7 @@ impl TryFrom<char> for Tile {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TileColor {
     Honor,

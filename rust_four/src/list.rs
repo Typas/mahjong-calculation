@@ -47,7 +47,7 @@ fn main() {
                 .clone()
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, h)| if i == p_pos { None } else { Some(h) })
+                .filter_map(|(i, h)| remove_impossible_head(i, h, p_pos, p))
                 .tuple_combinations::<(_, _, _, _)>()
                 .unique()
                 .map(|(m1, m2, m3, m4)| ArrayVec::from([m1, m2, m3, m4]))
@@ -61,20 +61,7 @@ fn main() {
                     heads
                         .clone()
                         .into_iter()
-                        .filter_map(|hs| {
-                            sb.clone()
-                                .add_meld(Meld::new(hs[0], ks[0]))
-                                .expect("failed to add 1st meld")
-                                .add_meld(Meld::new(hs[1], ks[1]))
-                                .expect("failed to add 2nd meld")
-                                .add_meld(Meld::new(hs[2], ks[2]))
-                                .expect("failed to add 3rd meld")
-                                .add_meld(Meld::new(hs[3], ks[3]))
-                                .expect("failed to add 4th meld")
-                                .build()
-                                .expect("cannot build set")
-                                .to_arrayvec()
-                        })
+                        .filter_map(|hs| generate_set(sb.clone(), &hs, &ks))
                         .filter(|hai| is_valid_hai(hai))
                         .collect::<Vec<ArrayVec<Tile, HAINUM>>>()
                 })
@@ -84,11 +71,15 @@ fn main() {
         .flatten()
         .collect();
 
-    let tmp: Vec<u8> = possible_sets
+    let mut possible_sets: Vec<ArrayVec<u8, HAINUM>> = possible_sets
         .into_iter()
-        .map(|s| s.into_iter().map(|t| t.to_char() as u8))
-        .flatten()
+        .map(|s| s.into_iter().map(|t| t.to_char() as u8).collect())
         .collect();
+
+    possible_sets.sort();
+    possible_sets.dedup();
+
+    let tmp: Vec<u8> = possible_sets.into_iter().flatten().collect();
     let filename = "patterns_rust_four.dat";
     let mut file = File::create(filename).expect("not able to open file");
     file.write_all(&tmp)
@@ -134,10 +125,55 @@ fn get_pairs() -> ArrayVec<Tile, TILEVARIANT> {
     ])
 }
 
+fn remove_impossible_head(i: usize, h: Tile, p_pos: usize, p: Tile) -> Option<Tile> {
+    match p.is_honor() {
+        true => {
+            if i == p_pos {
+                None
+            } else {
+                Some(h)
+            }
+        }
+        false => {
+            if i == p_pos || i == p_pos + 1 {
+                None
+            } else {
+                Some(h)
+            }
+        }
+    }
+}
+
+fn generate_set(
+    sb: SetBuilder,
+    hs: &ArrayVec<Tile, SETNUM>,
+    ks: &ArrayVec<MeldKind, SETNUM>,
+) -> Option<ArrayVec<Tile, HAINUM>> {
+    sb.add_meld(Meld::new(hs[0], ks[0]))
+        .expect("failed to add 1st meld")
+        .add_meld(Meld::new(hs[1], ks[1]))
+        .expect("failed to add 2nd meld")
+        .add_meld(Meld::new(hs[2], ks[2]))
+        .expect("failed to add 3rd meld")
+        .add_meld(Meld::new(hs[3], ks[3]))
+        .expect("failed to add 4th meld")
+        .build()
+        .expect("cannot build set")
+        .to_arrayvec()
+}
+
 fn is_valid_hai(hai: &ArrayVec<Tile, HAINUM>) -> bool {
     let mut counters = [0; TILEVARIANT];
 
     hai.iter().for_each(|h| counters[*h as usize] += 1);
+
+    let testcase = [71, 71, 71, 72, 72, 72, 84, 84, 84, 85, 86, 97, 97, 97];
+    if let true = hai.iter().zip(testcase.iter()).all(|(h, t)| *h as u8 == *t) {
+        eprintln!(
+            "testcase exists, validity: {}",
+            !counters.iter().any(|c| *c > 4)
+        );
+    }
 
     !counters.into_iter().any(|c| c > 4)
 }
@@ -166,7 +202,6 @@ impl Meld {
     }
 
     fn tryinto_arrayvec(self) -> Result<ArrayVec<u8, 3>, Box<dyn std::error::Error>> {
-        let mut result = ArrayVec::<_, 3>::new_const();
         match self.kind {
             MeldKind::Chow => match self.head {
                 Tile::Red
@@ -182,20 +217,18 @@ impl Meld {
                 | Tile::C9
                 | Tile::D8
                 | Tile::D9 => Err("Not valid chow")?,
-                _ => {
-                    result.push(self.head as u8);
-                    result.push(self.head as u8);
-                    result.push(self.head as u8);
-                }
+                _ => Ok(ArrayVec::from([
+                    self.head as u8,
+                    self.head as u8 + 1,
+                    self.head as u8 + 2,
+                ])),
             },
-            MeldKind::Pung => {
-                result.push(self.head as u8);
-                result.push(self.head as u8);
-                result.push(self.head as u8);
-            }
-        };
-
-        Ok(result)
+            MeldKind::Pung => Ok(ArrayVec::from([
+                self.head as u8,
+                self.head as u8,
+                self.head as u8,
+            ])),
+        }
     }
 }
 
