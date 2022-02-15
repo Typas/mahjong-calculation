@@ -6,13 +6,13 @@ pub const HAINUM: usize = 14;
 pub const SETNUM: usize = HAINUM / 3;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum MeldKind {
     RevealedChow,  // 明順
-    RevealedPung,  // 明刻
-    RevealedKong,  // 明槓
     ConcealedChow, // 暗順
+    RevealedPung,  // 明刻
     ConcealedPung, // 暗刻
+    RevealedKong,  // 明槓
     ConcealedKong, // 暗槓
 }
 
@@ -99,6 +99,22 @@ impl SetBuilder {
             }
             _ => Err("Not valid set")?,
         }
+    }
+}
+
+impl Ord for Meld {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.head.cmp(&other.head) {
+            std::cmp::Ordering::Equal => self.kind.cmp(&other.kind),
+            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for Meld {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

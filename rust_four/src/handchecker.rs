@@ -64,6 +64,10 @@ pub struct HandChecker {
 }
 
 impl HandChecker {
+    pub fn sort(&mut self) {
+        self.melds.sort();
+    }
+
     pub fn hands(&self) -> HandList {
         let mut checker = HandList::new();
         // all_chow_pung must be first
@@ -105,6 +109,22 @@ impl HandChecker {
         }
 
         checker
+    }
+}
+
+impl Ord for HandChecker {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.pair.cmp(&other.pair) {
+            std::cmp::Ordering::Equal => self.melds.cmp(&other.melds),
+            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for HandChecker {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

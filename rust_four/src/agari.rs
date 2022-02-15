@@ -40,8 +40,10 @@ fn main() -> std::io::Result<()> {
         .into_iter()
         .enumerate()
         .for_each(|(_, raw_hai)| {
-            let sets = allsets(&raw_hai);
+            let mut sets = allsets(&raw_hai);
+            sets.dedup();
             let combinations = comb(&raw_hai);
+
             sets.into_iter().for_each(|s| {
                 let list = s.hands();
                 let h = &mut hands;
@@ -150,12 +152,13 @@ fn allsets(raw: &[u8]) -> Vec<HandChecker> {
     let mut result = Vec::new();
     for (sb, remains) in tmp1.into_iter() {
         let tmp = get_last_melds(&remains, sb);
-        if let Some(tmp) = tmp {
+        if let Some(mut tmp) = tmp {
+            tmp.sort();
             result.push(tmp);
         }
     }
 
-    result.into_iter().unique().collect()
+    result
 }
 
 fn comb(raw: &[u8]) -> u64 {
@@ -319,9 +322,13 @@ fn get_second_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<T
         [0, 1, 2],
         [0, 1, 3],
         [0, 1, 4],
+        [0, 1, 5],
         [0, 2, 4],
         [0, 2, 5],
+        [0, 2, 6],
         [0, 3, 6],
+        [0, 3, 7],
+        [0, 4, 8],
     ];
 
     if is_pung(&pung_set) {
@@ -371,7 +378,14 @@ fn get_third_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
     // chow is possible in various way, get only (0, x, y) where x + y min
     // FIXME: prove only "first" chow is needed
     let pung_set = [set[0], set[1], set[2]];
-    let chow_indexes = [[0, 1, 2], [0, 1, 3], [0, 2, 4]];
+    let chow_indexes = [
+        [0, 1, 2],
+        [0, 1, 3],
+        [0, 1, 4],
+        [0, 1, 5],
+        [0, 2, 4],
+        [0, 2, 5],
+    ];
 
     if is_pung(&pung_set) {
         let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);

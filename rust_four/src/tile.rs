@@ -12,7 +12,7 @@ pub enum TileColor {
     Dot,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Tile {
     // 字牌, Honor
     Red,
