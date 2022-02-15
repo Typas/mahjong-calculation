@@ -4,10 +4,12 @@ use std::io::Write;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
+use set::{Meld, MeldKind, Set, SetBuilder};
+use tile::{Tile, TILEVARIANT};
+
+mod set;
 mod tile;
 
-use tile::Tile;
-use tile::TILEVARIANT;
 const HAINUM: usize = 14;
 const SETNUM: usize = HAINUM / 3;
 const SETKINDVARIANT: usize = 2_usize.pow(SETNUM as u32);
@@ -17,9 +19,9 @@ fn main() {
     let pairs = get_pairs();
 
     let kinds: ArrayVec<ArrayVec<MeldKind, SETNUM>, SETKINDVARIANT> =
-        std::iter::repeat(MeldKind::Chow)
+        std::iter::repeat(MeldKind::ConcealedChow)
             .take(SETNUM)
-            .chain(std::iter::repeat(MeldKind::Pung).take(SETNUM))
+            .chain(std::iter::repeat(MeldKind::ConcealedPung).take(SETNUM))
             .permutations(SETNUM)
             .unique()
             .map(|v| (&v as &[_]).try_into().unwrap())
@@ -53,7 +55,7 @@ fn main() {
                 .map(|(m1, m2, m3, m4)| ArrayVec::from([m1, m2, m3, m4]))
                 .collect();
 
-            let sb = SetBuilder::new(p);
+            let sb = SetBuilder::new().add_pair(p);
             kinds
                 .clone()
                 .into_iter()
@@ -184,26 +186,10 @@ impl Tile {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum MeldKind {
-    Chow,
-    Pung,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct Meld {
-    head: Tile,
-    kind: MeldKind,
-}
-
 impl Meld {
-    fn new(head: Tile, kind: MeldKind) -> Self {
-        Self { head, kind }
-    }
-
     fn tryinto_arrayvec(self) -> Result<ArrayVec<u8, 3>, Box<dyn std::error::Error>> {
         match self.kind {
-            MeldKind::Chow => match self.head {
+            MeldKind::ConcealedChow => match self.head {
                 Tile::Red
                 | Tile::Green
                 | Tile::White
@@ -223,52 +209,14 @@ impl Meld {
                     self.head as u8 + 2,
                 ])),
             },
-            MeldKind::Pung => Ok(ArrayVec::from([
+            MeldKind::ConcealedPung => Ok(ArrayVec::from([
                 self.head as u8,
                 self.head as u8,
                 self.head as u8,
             ])),
+            _ => unreachable!(),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-struct SetBuilder {
-    pair: Tile,
-    melds: ArrayVec<Meld, SETNUM>,
-}
-
-impl SetBuilder {
-    fn new(pair: Tile) -> Self {
-        let melds = ArrayVec::<_, SETNUM>::new_const();
-        Self { pair, melds }
-    }
-
-    fn add_meld(mut self, m: Meld) -> Result<Self, Box<dyn std::error::Error>> {
-        match self.melds.is_full() {
-            true => Err("Already full of melds")?,
-            false => {
-                self.melds.push(m);
-                Ok(self)
-            }
-        }
-    }
-
-    fn build(self) -> Result<Set, Box<dyn std::error::Error>> {
-        match self.melds.is_full() {
-            true => Ok(Set {
-                pair: self.pair,
-                melds: self.melds,
-            }),
-            _ => Err("Not valid set")?,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct Set {
-    pair: Tile,
-    melds: ArrayVec<Meld, SETNUM>,
 }
 
 impl Set {

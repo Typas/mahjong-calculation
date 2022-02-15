@@ -1,8 +1,17 @@
 use std::convert::TryFrom;
 
+#[allow(dead_code)]
 pub const TILEVARIANT: usize = 34;
 
 #[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TileColor {
+    Honor,
+    Bamboo,
+    Character,
+    Dot,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tile {
     // 字牌, Honor
@@ -212,13 +221,4 @@ impl TryFrom<char> for Tile {
             _ => Err(()),
         }
     }
-}
-
-#[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum TileColor {
-    Honor,
-    Bamboo,
-    Character,
-    Dot,
 }

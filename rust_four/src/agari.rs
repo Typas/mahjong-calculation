@@ -1,20 +1,21 @@
 use arrayvec::ArrayVec;
 use itertools::Itertools;
-use set::{HandList, Set, SetBuilder, HAINUM};
 use std::{collections::HashMap, fs::File, io::Read, time::Instant};
 
 use crate::{
     hand::{Hand, HANDVARIANT},
-    set::{Meld, MeldKind},
+    handchecker::{HandChecker, HandList},
+    set::{Meld, MeldKind, SetBuilder, HAINUM},
     tile::{Tile, TILEVARIANT},
 };
+
 mod hand;
+mod handchecker;
 mod set;
 mod tile;
 
 fn main() -> std::io::Result<()> {
     let mut reader = File::open("patterns_general_four.dat")?;
-    // let mut raw_hai = [0u8; HAINUM];
     let fsize = reader.metadata()?.len() as usize;
     let mut buffer = Vec::with_capacity(fsize);
     let time_read = Instant::now();
@@ -121,7 +122,7 @@ fn main() -> std::io::Result<()> {
 }
 
 // main performance problem
-fn allsets(raw: &[u8]) -> Vec<Set> {
+fn allsets(raw: &[u8]) -> Vec<HandChecker> {
     assert_eq!(raw.len(), HAINUM);
     let mut sorted_raw = raw.to_vec();
     sorted_raw.sort();
@@ -231,8 +232,7 @@ fn get_pairs(set: &[Tile]) -> Vec<(SetBuilder, ArrayVec<Tile, FOURSET>)> {
     let mut result = Vec::new();
 
     for pi in pair_indexes.into_iter() {
-        let mut sb = SetBuilder::new(Tile::East);
-        sb.add_pair(set[pi]);
+        let sb = SetBuilder::new().add_pair(set[pi]);
         let remains: ArrayVec<Tile, FOURSET> = set
             .iter()
             .enumerate()
@@ -249,8 +249,6 @@ fn get_pairs(set: &[Tile]) -> Vec<(SetBuilder, ArrayVec<Tile, FOURSET>)> {
 fn get_first_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Tile, THREESET>)> {
     assert_eq!(set.len(), FOURSET);
     let mut result = Vec::new();
-    // combinations and unique takes too long time
-    // TODO: rewrite without combinations and unique
 
     // assume set is sorted
     // pung is always continuous (0, 1, 2)
@@ -272,9 +270,8 @@ fn get_first_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
 
     if is_pung(&pung_set) {
         let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
-        let mut new_sb = sb.clone();
+        let new_sb = sb.clone().add_meld(new_meld).unwrap();
         let meld_pos = [0, 1, 2];
-        new_sb.add_meld(new_meld).unwrap();
         let remains: ArrayVec<Tile, THREESET> = set
             .to_owned()
             .into_iter()
@@ -291,8 +288,7 @@ fn get_first_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
         let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
         if is_chow(&chow_set) {
             let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
-            let mut new_sb = sb.clone();
-            new_sb.add_meld(new_meld).unwrap();
+            let new_sb = sb.clone().add_meld(new_meld).unwrap();
             let remains: ArrayVec<Tile, THREESET> = set
                 .to_owned()
                 .into_iter()
@@ -330,9 +326,8 @@ fn get_second_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<T
 
     if is_pung(&pung_set) {
         let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
-        let mut new_sb = sb.clone();
+        let new_sb = sb.clone().add_meld(new_meld).unwrap();
         let meld_pos = [0, 1, 2];
-        new_sb.add_meld(new_meld).unwrap();
         let remains: ArrayVec<Tile, TWOSET> = set
             .to_owned()
             .into_iter()
@@ -349,8 +344,7 @@ fn get_second_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<T
         let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
         if is_chow(&chow_set) {
             let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
-            let mut new_sb = sb.clone();
-            new_sb.add_meld(new_meld).unwrap();
+            let new_sb = sb.clone().add_meld(new_meld).unwrap();
             let remains: ArrayVec<Tile, TWOSET> = set
                 .to_owned()
                 .into_iter()
@@ -381,9 +375,8 @@ fn get_third_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
 
     if is_pung(&pung_set) {
         let new_meld = Meld::new(pung_set[0], MeldKind::ConcealedPung);
-        let mut new_sb = sb.clone();
+        let new_sb = sb.clone().add_meld(new_meld).unwrap();
         let meld_pos = [0, 1, 2];
-        new_sb.add_meld(new_meld).unwrap();
         let remains: ArrayVec<Tile, ONESET> = set
             .to_owned()
             .into_iter()
@@ -400,8 +393,7 @@ fn get_third_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
         let chow_set = [set[idx[0]], set[idx[1]], set[idx[2]]];
         if is_chow(&chow_set) {
             let new_meld = Meld::new(chow_set[0], MeldKind::ConcealedChow);
-            let mut new_sb = sb.clone();
-            new_sb.add_meld(new_meld).unwrap();
+            let new_sb = sb.clone().add_meld(new_meld).unwrap();
             let remains: ArrayVec<Tile, ONESET> = set
                 .to_owned()
                 .into_iter()
@@ -419,7 +411,7 @@ fn get_third_melds(set: &[Tile], sb: SetBuilder) -> Vec<(SetBuilder, ArrayVec<Ti
     result
 }
 
-fn get_last_melds(set: &[Tile], mut sb: SetBuilder) -> Option<Set> {
+fn get_last_melds(set: &[Tile], sb: SetBuilder) -> Option<HandChecker> {
     assert_eq!(set.len(), ONESET);
     let chow = is_chow(set);
     let pung = is_pung(set);
@@ -430,8 +422,13 @@ fn get_last_melds(set: &[Tile], mut sb: SetBuilder) -> Option<Set> {
                 (false, true) => Meld::new(set[0], MeldKind::ConcealedPung),
                 _ => unreachable!(),
             };
-            sb.add_meld(new_meld).unwrap();
-            sb.build().ok()
+            Some(
+                sb.add_meld(new_meld)
+                    .ok()?
+                    .build()
+                    .ok()?
+                    .to_handchecker(Tile::East),
+            )
         }
         false => None,
     }

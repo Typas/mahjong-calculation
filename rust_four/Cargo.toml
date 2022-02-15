@@ -20,5 +20,4 @@ path = "src/agari.rs"
 [dependencies]
 bitvec = "1"
 arrayvec = "0.7"
-rayon = "1.5"
 itertools = "0.10"
