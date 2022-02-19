@@ -154,13 +154,13 @@ impl HandChecker {
 
     // 役牌
     fn score_pungs(&self, checker: &mut HandList) {
-        match self.melds.iter().any(|m| m.head == Tile::Dark) {
-            true => checker.set(Hand::DarkPung as usize, true),
+        match self.melds.iter().any(|m| m.head == Tile::Moon) {
+            true => checker.set(Hand::MoonPung as usize, true),
             false => (),
         }
 
-        match self.melds.iter().any(|m| m.head == Tile::Light) {
-            true => checker.set(Hand::LightPung as usize, true),
+        match self.melds.iter().any(|m| m.head == Tile::Sun) {
+            true => checker.set(Hand::SunPung as usize, true),
             false => (),
         }
 

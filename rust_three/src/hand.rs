@@ -4,8 +4,8 @@ pub const HANDMAXSCORE: u16 = 16;
 #[derive(Clone, Copy)]
 pub enum Hand {
     AllChows,              // 平和
-    DarkPung,              // 役牌陰
-    LightPung,             // 役牌陽
+    MoonPung,              // 役牌陰
+    SunPung,               // 役牌陽
     WindPung,              // 役牌自風(中)
     AllPungs,              // 對對和
     LittleThreeWinds,      // 小三元
@@ -34,8 +34,8 @@ impl Hand {
     pub fn score(&self) -> u16 {
         match self {
             &Self::AllChows => 0,
-            &Self::DarkPung => 2,
-            &Self::LightPung => 2,
+            &Self::MoonPung => 2,
+            &Self::SunPung => 2,
             &Self::WindPung => 2,
             &Self::AllPungs => 4,
             &Self::LittleThreeWinds => 4,
@@ -65,7 +65,7 @@ impl Hand {
     pub fn name(&self) -> String {
         match self {
             &Self::AllChows => "平和".to_string(),
-            &Self::DarkPung | &Self::LightPung | &Self::WindPung => "役牌".to_string(),
+            &Self::MoonPung | &Self::SunPung | &Self::WindPung => "役牌".to_string(),
             &Self::AllPungs => "對對和".to_string(),
             &Self::LittleThreeWinds => "小三元".to_string(),
             &Self::BigThreeWinds => "大三元".to_string(),
@@ -97,8 +97,8 @@ impl TryFrom<usize> for Hand {
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Self::AllChows),
-            1 => Ok(Self::DarkPung),
-            2 => Ok(Self::LightPung),
+            1 => Ok(Self::MoonPung),
+            2 => Ok(Self::SunPung),
             3 => Ok(Self::WindPung),
             4 => Ok(Self::AllPungs),
             5 => Ok(Self::LittleThreeWinds),

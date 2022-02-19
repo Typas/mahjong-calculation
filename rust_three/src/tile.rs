@@ -15,8 +15,8 @@ pub enum TileColor {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Tile {
     // 字牌, Honor
-    Sun,
     Moon,
+    Sun,
     Red,
     Green,
     White,
@@ -51,7 +51,7 @@ impl Tile {
 
     pub fn color(&self) -> TileColor {
         match self {
-            &Self::Sun | &Self::Moon | &Self::Red | &Self::Green | &Self::White => TileColor::Honor,
+            &Self::Moon | &Self::Sun | &Self::Red | &Self::Green | &Self::White => TileColor::Honor,
             &Self::B1 | &Self::B2 | &Self::B3 | &Self::B4 | &Self::B5 | &Self::B6 => {
                 TileColor::Bamboo
             }
@@ -65,8 +65,8 @@ impl Tile {
 
     pub fn number(&self) -> usize {
         match self {
-            &Self::Sun | &Self::B1 | &Self::C1 | &Self::D1 => 1,
-            &Self::Moon | &Self::B2 | &Self::C2 | &Self::D2 => 2,
+            &Self::Moon | &Self::B1 | &Self::C1 | &Self::D1 => 1,
+            &Self::Sun | &Self::B2 | &Self::C2 | &Self::D2 => 2,
             &Self::Red | &Self::B3 | &Self::C3 | &Self::D3 => 3,
             &Self::Green | &Self::B4 | &Self::C4 | &Self::D4 => 4,
             &Self::White | &Self::B5 | &Self::C5 | &Self::D5 => 5,
@@ -80,8 +80,8 @@ impl Tile {
 
     pub fn is_ascending(&self, t: Tile) -> bool {
         match self {
-            &Self::Sun
-            | &Self::Moon
+            &Self::Moon
+            | &Self::Sun
             | &Self::Red
             | &Self::Green
             | &Self::White
@@ -94,8 +94,8 @@ impl Tile {
 
     pub fn is_descending(&self, t: Tile) -> bool {
         match self {
-            &Self::Sun
-            | &Self::Moon
+            &Self::Moon
+            | &Self::Sun
             | &Self::Red
             | &Self::Green
             | &Self::White
@@ -130,7 +130,7 @@ impl Tile {
 
     pub fn is_dragon(&self) -> bool {
         match self {
-            &Self::Sun | &Self::Moon => true,
+            &Self::Moon | &Self::Sun => true,
             _ => false,
         }
     }
@@ -141,8 +141,8 @@ impl TryFrom<char> for Tile {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'A' => Ok(Tile::Sun),
-            'B' => Ok(Tile::Moon),
+            'A' => Ok(Tile::Moon),
+            'B' => Ok(Tile::Sun),
             'C' => Ok(Tile::Red),
             'D' => Ok(Tile::Green),
             'E' => Ok(Tile::White),
