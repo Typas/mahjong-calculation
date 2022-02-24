@@ -17,6 +17,14 @@ path = "src/list.rs"
 name = "agari"
 path = "src/agari.rs"
 
+[[bin]]
+name = "ex-list"
+path = "src/ex_list.rs"
+
+[[bin]]
+name = "ex-agari"
+path = "src/ex_agari.rs"
+
 [dependencies]
 bitvec = "1"
 arrayvec = "0.7"
