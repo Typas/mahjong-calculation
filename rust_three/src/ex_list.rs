@@ -4,7 +4,7 @@ use std::io::Write;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
-use ex_set::{Meld, MeldKind, Set, SetBuilder, HAINUM, SETNUM};
+use ex_set::{Meld, MeldKind, Pair, Set, SetBuilder, HAINUM, SETNUM};
 use tile::{Tile, TILEVARIANT};
 mod ex_set;
 mod tile;
@@ -53,7 +53,7 @@ fn main() {
                 .map(|(m1, m2, m3)| ArrayVec::from([m1, m2, m3]))
                 .collect();
 
-            let sb = SetBuilder::new().add_pair(p);
+            let sb = SetBuilder::new().add_pair(Pair::new(p, true));
             kinds
                 .clone()
                 .into_iter()
@@ -78,10 +78,6 @@ fn main() {
 
     general_sets.sort();
     general_sets.dedup();
-
-    // create seven pairs without same chows
-
-    // create thirteen orphans
 
     let tmp: Vec<u8> = general_sets.into_iter().flatten().collect();
     let filename = "patterns_rust_three_extended.dat";

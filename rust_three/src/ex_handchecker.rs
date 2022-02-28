@@ -102,9 +102,9 @@ impl HandChecker {
                     .iter_mut()
                     .enumerate()
                     .filter_map(|(i, c)| match Hand::try_from(i).ok() {
-                        Some(h) => match h.score() == HANDMAXSCORE {
-                            true => None,
-                            false => Some(c),
+                        Some(h) => match h.score() {
+                            HANDMAXSCORE => None,
+                            _ => Some(c),
                         },
                         None => Some(c),
                     })

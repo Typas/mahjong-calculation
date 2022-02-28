@@ -81,6 +81,7 @@ impl Pair {
         Self { head, concealed }
     }
 
+    #[allow(dead_code)]
     pub fn is_concealed(&self) -> bool {
         self.concealed
     }

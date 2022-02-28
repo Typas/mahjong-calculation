@@ -585,6 +585,6 @@ mod tests {
         hl.set(Hand::TwicePureDoubleChow as usize, true);
         hl.set(Hand::OutsideHands as usize, true);
 
-        assert_eq!(hl.score(), 16);
+        assert_eq!(hl.score(), 17);
     }
 }
