@@ -1,5 +1,5 @@
-use std::fs::File;
 use std::io::Write;
+use std::{collections::HashSet, fs::File};
 
 use arrayvec::ArrayVec;
 use itertools::Itertools;
@@ -16,6 +16,7 @@ const SETKINDVARIANT: usize = 2_usize.pow(SETNUM as u32);
 const TILESELECTNUM: usize = TILEVARIANT * 4 - 7 * 3;
 
 fn main() {
+    let filename = "patterns_rust_four_extend.dat";
     let pairs = get_pairs();
 
     let kinds: ArrayVec<ArrayVec<MeldKind, SETNUM>, SETKINDVARIANT> =
@@ -80,9 +81,19 @@ fn main() {
         .map(|s| s.into_iter().map(|t| t.to_char() as u8).collect())
         .collect();
 
-    general_sets.sort();
+    general_sets.sort_unstable();
     general_sets.dedup();
     println!("general sets: {}", general_sets.len());
+    drop(kinds);
+    drop(meld_heads);
+
+    let mut file = File::create(filename).expect("not able to open file");
+    {
+        let tmp: Vec<u8> = general_sets.into_iter().flatten().collect();
+        assert_eq!(tmp.len() % HAINUM, 0);
+        file.write_all(&tmp)
+            .expect("cannot write all into the file");
+    }
 
     // create seven pairs without same chows
     const SEVENPAIRNUM: usize = 2 * TILEVARIANT;
@@ -93,27 +104,38 @@ fn main() {
         .flatten()
         .collect();
     assert_eq!(seven_pair_heads.len(), SEVENPAIRNUM);
-    let mut seven_pairs_no_general_sets: Vec<ArrayVec<u8, HAINUM>> = seven_pair_heads
+
+    let seven_pairs_no_general_sets: HashSet<ArrayVec<Tile, HAINUM>> = seven_pair_heads
         .into_iter()
         .combinations(7)
+        .map(|s| s.into_iter().collect::<ArrayVec<Tile, HAINUM>>())
+        .collect();
+
+    let seven_pairs_no_general_sets: Vec<ArrayVec<u8, HAINUM>> = seven_pairs_no_general_sets
+        .into_iter()
+        .sorted_unstable()
         .filter(|s| is_seven_pair_not_general_set(&s))
         .map(|s| {
             s.into_iter()
+                .map(|t| t.to_char() as u8)
                 .map(|x| std::iter::repeat(x).take(2))
                 .flatten()
-                .collect::<ArrayVec<Tile, HAINUM>>()
+                .collect::<ArrayVec<u8, HAINUM>>()
         })
-        .map(|s| s.into_iter().map(|t| t.to_char() as u8).collect())
         .collect();
-    assert_eq!(0, 1);
 
-    seven_pairs_no_general_sets.sort();
-    seven_pairs_no_general_sets.dedup();
     assert_eq!(seven_pairs_no_general_sets[0].len(), HAINUM);
     println!(
         "seven pair sets (non-general): {}",
         seven_pairs_no_general_sets.len()
     );
+
+    {
+        let tmp: Vec<u8> = seven_pairs_no_general_sets.into_iter().flatten().collect();
+        assert_eq!(tmp.len() % HAINUM, 0);
+        file.write_all(&tmp)
+            .expect("cannot write all into the file");
+    }
 
     // create thirteen orphans
     let thirteen_orphans: ArrayVec<_, 13> = pairs
@@ -135,17 +157,12 @@ fn main() {
     assert_eq!(thirteen_orphans_sets[0].len(), HAINUM);
     println!("thirteen orphan sets: {}", thirteen_orphans_sets.len());
 
-    let tmp: Vec<u8> = general_sets
-        .into_iter()
-        .chain(seven_pairs_no_general_sets.into_iter())
-        .chain(thirteen_orphans_sets.into_iter())
-        .flatten()
-        .collect();
-    assert_eq!(tmp.len() % HAINUM, 0);
-    let filename = "patterns_rust_four_extend.dat";
-    let mut file = File::create(filename).expect("not able to open file");
-    file.write_all(&tmp)
-        .expect("cannot write all into the file");
+    {
+        let tmp: Vec<u8> = thirteen_orphans_sets.into_iter().flatten().collect();
+        assert_eq!(tmp.len() % HAINUM, 0);
+        file.write_all(&tmp)
+            .expect("cannot write all into the file");
+    }
 }
 
 fn get_pairs() -> ArrayVec<Tile, TILEVARIANT> {
@@ -241,12 +258,36 @@ fn is_valid_hai(hai: &ArrayVec<Tile, HAINUM>) -> bool {
 }
 
 fn is_seven_pair_not_general_set(s: &[Tile]) -> bool {
+    const CHOW_INDEXES: [([usize; 3], [usize; 3]); 14] = [
+        ([0, 1, 2], [3, 4, 5]),
+        ([0, 1, 2], [3, 4, 6]),
+        ([0, 1, 2], [3, 5, 6]),
+        ([0, 1, 2], [4, 5, 6]),
+        ([0, 1, 3], [4, 5, 6]),
+        ([0, 2, 3], [4, 5, 6]),
+        ([1, 2, 3], [4, 5, 6]),
+        ([0, 2, 4], [1, 3, 5]),
+        ([0, 2, 4], [1, 3, 6]),
+        ([0, 2, 5], [1, 3, 6]),
+        ([0, 2, 5], [1, 4, 6]),
+        ([0, 3, 5], [1, 4, 6]),
+        ([0, 3, 5], [2, 4, 6]),
+        ([1, 3, 5], [2, 4, 6]),
+    ];
     match s.len() {
         7 => {
-            s.windows(6)
-                .filter(|s| {
-                    (is_chow(&[s[0], s[1], s[2]]) && is_chow(&[s[3], s[4], s[5]]))
-                        || (is_chow(&[s[0], s[2], s[4]]) && is_chow(&[s[1], s[3], s[5]]))
+            CHOW_INDEXES
+                .into_iter()
+                .map(|ixs| {
+                    let (chow1, chow2) = (
+                        [s[ixs.0[0]], s[ixs.0[1]], s[ixs.0[2]]],
+                        [s[ixs.1[0]], s[ixs.1[1]], s[ixs.1[2]]],
+                    );
+                    (is_chow(&chow1), is_chow(&chow2))
+                })
+                .filter(|b| match b {
+                    (true, true) => true,
+                    _ => false,
                 })
                 .count()
                 == 0
